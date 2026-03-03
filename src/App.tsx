@@ -17,6 +17,7 @@ import ProductDetail from "./pages/ProductDetail";
 import NotFound from "./pages/NotFound";
 import ScrollToTop from "@/components/ScrollToTop";
 import AdminLayout from "./admin/AdminLayout";
+import BannerList from "./admin/BannerList";
 import BannerAdmin from "./admin/BannerAdmin";
 import FooterAdmin from "./admin/FooterAdmin";
 import IndexAdmin from "./admin/IndexAdmin";
@@ -64,7 +65,7 @@ const App = () => (
                 <main className="flex-1">
                   <Routes>
                     <Route path="/" element={<AdminLayout />}>
-                      <Route path="banner" element={<BannerAdmin />} />
+                      <Route path="banner" element={<BannerList />} />
                       <Route path="index" element={<IndexAdmin />} />
                       <Route path="products" element={<ProductAdmin />} />
                       <Route path="footer" element={<FooterAdmin />} />
