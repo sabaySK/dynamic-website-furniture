@@ -1,21 +1,52 @@
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, Truck, RotateCcw, ArrowUp, Search, X } from "lucide-react";
+import { Shield, Truck, RotateCcw, ArrowUp, Search, X, SlidersHorizontal } from "lucide-react";
 import { getProducts, getCategories } from "@/lib/catalog";
-import type { Category } from "@/data/products";
+import type { Category, Material, Color } from "@/data/products";
+import { materials, colors } from "@/data/products";
 import ProductCard from "@/components/ProductCard";
 import shopBanner from "@/assets/shop-banner.jpg";
 import { getOverride } from "@/lib/overrides";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { SliderRange } from "@/components/ui/slider";
 
-type SortOption = "default" | "price-asc" | "price-desc" | "rating" | "newest";
+type AvailabilityFilter = "all" | "inStock" | "outStock";
 
 const Shop = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeCategory = searchParams.get("category") as Category | null;
-  const [sort, setSort] = useState<SortOption>("default");
   const [search, setSearch] = useState("");
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+
+  // Filter state from URL
+  const priceMin = searchParams.get("priceMin") ? Number(searchParams.get("priceMin")) : undefined;
+  const priceMax = searchParams.get("priceMax") ? Number(searchParams.get("priceMax")) : undefined;
+
+  const priceBounds = useMemo(() => {
+    const items = getProducts();
+    if (items.length === 0) return { min: 0, max: 2000 };
+    const prices = items.map((p) => p.price);
+    return { min: Math.floor(Math.min(...prices) / 50) * 50, max: Math.ceil(Math.max(...prices) / 50) * 50 };
+  }, []);
+
+  const priceRangeValue: [number, number] = [
+    priceMin ?? priceBounds.min,
+    priceMax ?? priceBounds.max,
+  ];
+  const materialsParam = searchParams.get("material")?.split(",").filter(Boolean) as Material[] | undefined;
+  const colorsParam = searchParams.get("color")?.split(",").filter(Boolean) as Color[] | undefined;
+  const availability = (searchParams.get("availability") as AvailabilityFilter) || "all";
 
   useEffect(() => {
     const handleScroll = () => setShowBackToTop(window.scrollY > 400);
@@ -34,30 +65,110 @@ const Shop = () => {
       list = list.filter((p) => p.name.toLowerCase().includes(q));
     }
 
-    switch (sort) {
-      case "price-asc":
-        list.sort((a, b) => a.price - b.price);
-        break;
-      case "price-desc":
-        list.sort((a, b) => b.price - a.price);
-        break;
-      case "rating":
-        list.sort((a, b) => b.rating - a.rating);
-        break;
-      case "newest":
-        list.sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
-        break;
+    // Price range
+    if (priceMin != null && !isNaN(priceMin)) {
+      list = list.filter((p) => p.price >= priceMin);
     }
+    if (priceMax != null && !isNaN(priceMax)) {
+      list = list.filter((p) => p.price <= priceMax);
+    }
+
+    // Material
+    if (materialsParam && materialsParam.length > 0) {
+      list = list.filter((p) =>
+        p.material?.some((m) => materialsParam.includes(m))
+      );
+    }
+
+    // Color
+    if (colorsParam && colorsParam.length > 0) {
+      list = list.filter((p) => p.color && colorsParam.includes(p.color));
+    }
+
+    // Availability
+    if (availability === "inStock") {
+      list = list.filter((p) => p.inStock !== false);
+    } else if (availability === "outStock") {
+      list = list.filter((p) => p.inStock === false);
+    }
+
     return list;
-  }, [activeCategory, sort, search]);
+  }, [activeCategory, search, priceMin, priceMax, materialsParam, colorsParam, availability]);
 
   const setCategory = (cat: Category | null) => {
     if (cat) {
-      setSearchParams({ category: cat });
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("category", cat);
+        return next;
+      });
     } else {
-      setSearchParams({});
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("category");
+        return next;
+      });
     }
   };
+
+  const updateFilters = (updates: Record<string, string | undefined>) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      for (const [key, value] of Object.entries(updates)) {
+        if (value === undefined || value === "") {
+          next.delete(key);
+        } else {
+          next.set(key, value);
+        }
+      }
+      return next;
+    });
+  };
+
+  const toggleMaterial = (m: Material) => {
+    const current = materialsParam ?? [];
+    const next = current.includes(m)
+      ? current.filter((x) => x !== m)
+      : [...current, m];
+    updateFilters({ material: next.length > 0 ? next.join(",") : undefined });
+  };
+
+  const toggleColor = (c: Color) => {
+    const current = colorsParam ?? [];
+    const next = current.includes(c)
+      ? current.filter((x) => x !== c)
+      : [...current, c];
+    updateFilters({ color: next.length > 0 ? next.join(",") : undefined });
+  };
+
+  const setPriceRange = (value: [number, number]) => {
+    const [min, max] = value;
+    if (min === priceBounds.min && max === priceBounds.max) {
+      updateFilters({ priceMin: undefined, priceMax: undefined });
+    } else {
+      updateFilters({ priceMin: String(min), priceMax: String(max) });
+    }
+  };
+
+  const clearFilters = () => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("priceMin");
+      next.delete("priceMax");
+      next.delete("material");
+      next.delete("color");
+      next.delete("availability");
+      return next;
+    });
+    setFilterOpen(false);
+  };
+
+  const hasActiveFilters =
+    (priceMin != null && !isNaN(priceMin)) ||
+    (priceMax != null && !isNaN(priceMax)) ||
+    (materialsParam && materialsParam.length > 0) ||
+    (colorsParam && colorsParam.length > 0) ||
+    availability !== "all";
 
   return (
     <div className="min-h-screen">
@@ -134,9 +245,124 @@ const Shop = () => {
         </div>
 
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 lg:gap-4">
+          {/* Categories + Filters */}
+          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+          {/* Filters button (mobile) / inline filters (desktop) */}
+          <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
+            <SheetTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0 gap-1.5"
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                Filters
+                {hasActiveFilters && (
+                  <span className="bg-primary text-primary-foreground text-xs rounded-full h-4 min-w-4 flex items-center justify-center">
+                    !
+                  </span>
+                )}
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-full max-w-sm overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle>Filters</SheetTitle>
+              </SheetHeader>
+              <div className="mt-6 space-y-6">
+                {/* Price range */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Price range</Label>
+                  <div className="flex gap-2 items-center text-sm text-muted-foreground">
+                    <span>${priceRangeValue[0]}</span>
+                    <span>–</span>
+                    <span>${priceRangeValue[1]}</span>
+                  </div>
+                  <SliderRange
+                    value={priceRangeValue}
+                    onValueChange={setPriceRange}
+                    min={priceBounds.min}
+                    max={priceBounds.max}
+                    step={50}
+                  />
+                </div>
+
+                {/* Material */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Material</Label>
+                  <div className="flex flex-col gap-2">
+                    {materials.map((m) => (
+                      <div key={m} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`material-${m}`}
+                          checked={materialsParam?.includes(m) ?? false}
+                          onCheckedChange={() => toggleMaterial(m)}
+                        />
+                        <label
+                          htmlFor={`material-${m}`}
+                          className="text-sm font-body cursor-pointer"
+                        >
+                          {m}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Color */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Color</Label>
+                  <div className="flex flex-col gap-2">
+                    {colors.map((c) => (
+                      <div key={c} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`color-${c}`}
+                          checked={colorsParam?.includes(c) ?? false}
+                          onCheckedChange={() => toggleColor(c)}
+                        />
+                        <label
+                          htmlFor={`color-${c}`}
+                          className="text-sm font-body cursor-pointer"
+                        >
+                          {c}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Availability */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Availability</Label>
+                  <select
+                    value={availability}
+                    onChange={(e) =>
+                      updateFilters({
+                        availability:
+                          e.target.value === "all"
+                            ? undefined
+                            : e.target.value,
+                      })
+                    }
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="all">All</option>
+                    <option value="inStock">In Stock</option>
+                    <option value="outStock">Out of Stock</option>
+                  </select>
+                </div>
+
+                {hasActiveFilters && (
+                  <Button variant="ghost" size="sm" onClick={clearFilters}>
+                    Clear filters
+                  </Button>
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
+
           {/* Categories */}
           {/* Mobile: horizontally scrollable row; Desktop: wrapping row */}
-          <div className="relative -mx-4 lg:mx-0 w-full lg:w-auto">
+          <div className="relative -mx-4 lg:mx-0 flex-1 min-w-0">
             <div className="flex gap-2 overflow-x-auto scrollbar-hide px-4 lg:px-0 pb-1 lg:flex-wrap lg:overflow-visible snap-x snap-mandatory lg:snap-none touch-pan-x">
               <button
                 onClick={() => setCategory(null)}
@@ -167,8 +393,9 @@ const Shop = () => {
             {/* Right-edge fade hint on mobile & tablet */}
             <div className="pointer-events-none absolute right-0 top-0 bottom-1 w-12 bg-gradient-to-l from-background to-transparent lg:hidden" />
           </div>
+          </div>
 
-          {/* Sort + Count */}
+          {/* Product count */}
           <div className="flex items-center gap-4">
             <AnimatePresence mode="wait">
               <motion.span
@@ -182,49 +409,119 @@ const Shop = () => {
                 {filtered.length} product{filtered.length !== 1 ? "s" : ""}
               </motion.span>
             </AnimatePresence>
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as SortOption)}
-              className="bg-card border border-border rounded-lg px-4 py-2 text-sm font-body text-foreground focus:ring-2 focus:ring-primary/20 focus:outline-none"
-            >
-              <option value="default">Default</option>
-              <option value="price-asc">Price: Low → High</option>
-              <option value="price-desc">Price: High → Low</option>
-              <option value="rating">Top Rated</option>
-              <option value="newest">New Arrivals</option>
-            </select>
         </div>
         </div>
         </div>
+
+        {/* Desktop filter sidebar + Products */}
+        <div className="flex gap-8 mt-6">
+          {/* Desktop filters - visible on lg+ */}
+          <aside className="hidden lg:block w-56 shrink-0 space-y-6">
+            <div className="sticky top-24 space-y-6">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Price range</Label>
+                <div className="flex gap-2 items-center text-sm text-muted-foreground mb-2">
+                  <span>${priceRangeValue[0]}</span>
+                  <span>–</span>
+                  <span>${priceRangeValue[1]}</span>
+                </div>
+                <SliderRange
+                  value={priceRangeValue}
+                  onValueChange={setPriceRange}
+                  min={priceBounds.min}
+                  max={priceBounds.max}
+                  step={50}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Material</Label>
+                <div className="flex flex-col gap-2">
+                  {materials.map((m) => (
+                    <div key={m} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`desktop-material-${m}`}
+                        checked={materialsParam?.includes(m) ?? false}
+                        onCheckedChange={() => toggleMaterial(m)}
+                      />
+                      <label htmlFor={`desktop-material-${m}`} className="text-sm font-body cursor-pointer">
+                        {m}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Color</Label>
+                <div className="flex flex-col gap-2">
+                  {colors.map((c) => (
+                    <div key={c} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`desktop-color-${c}`}
+                        checked={colorsParam?.includes(c) ?? false}
+                        onCheckedChange={() => toggleColor(c)}
+                      />
+                      <label htmlFor={`desktop-color-${c}`} className="text-sm font-body cursor-pointer">
+                        {c}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Availability</Label>
+                <select
+                  value={availability}
+                  onChange={(e) =>
+                    updateFilters({
+                      availability: e.target.value === "all" ? undefined : e.target.value,
+                    })
+                  }
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="all">All</option>
+                  <option value="inStock">In Stock</option>
+                  <option value="outStock">Out of Stock</option>
+                </select>
+              </div>
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              )}
+            </div>
+          </aside>
 
         {/* Products Grid */}
-        <motion.div
-          layout
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-6"
-        >
-          <AnimatePresence mode="popLayout">
-            {filtered.map((product, i) => (
-              <motion.div
-                key={product.id}
-                layout
-                initial={{ opacity: 0, scale: 0.92 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.92 }}
-                transition={{ duration: 0.3, delay: i * 0.04, ease: "easeOut" }}
-              >
-                <ProductCard product={product} />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </motion.div>
-
-        {filtered.length === 0 && (
-          <div className="text-center py-20">
-            <p className="text-muted-foreground font-body">
-              {search ? `No products match "${search}".` : "No products found in this category."}
-            </p>
-          </div>
-        )}
+        <div className="flex-1 min-w-0">
+          {filtered.length === 0 ? (
+            <div className="text-center py-20">
+              <p className="text-muted-foreground font-body">
+                {search ? `No products match "${search}".` : "No products found with these filters."}
+              </p>
+            </div>
+          ) : (
+            <motion.div
+              layout
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+            >
+              <AnimatePresence mode="popLayout">
+                {filtered.map((product, i) => (
+                  <motion.div
+                    key={product.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.92 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.92 }}
+                    transition={{ duration: 0.3, delay: i * 0.04, ease: "easeOut" }}
+                  >
+                    <ProductCard product={product} />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </div>
+        </div>
       </div>
 
       {/* Back to top */}

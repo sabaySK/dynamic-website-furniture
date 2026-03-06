@@ -1,8 +1,31 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Mail, Phone, MapPin, ArrowRight, Truck, Shield, RotateCcw } from "lucide-react";
+import { Mail, Phone, MapPin, ArrowRight, Truck, Shield, RotateCcw, Facebook, Instagram, Twitter, Linkedin } from "lucide-react";
 import { toast } from "sonner";
 import { getOverride } from "@/lib/overrides";
+
+const CATEGORIES = ["Living Room", "Bedroom", "Dining", "Office", "Lighting", "Storage"];
+
+const CUSTOMER_SERVICE = [
+  { label: "Order Status", to: "/account?tab=orders" },
+  { label: "Contact Us", to: "/contact" },
+  { label: "FAQ", to: "/contact" },
+  { label: "Returns & Exchanges", to: "/return-policy" },
+];
+
+const POLICIES = [
+  { label: "Shipping Policy", to: "/shipping-policy" },
+  { label: "Return Policy", to: "/return-policy" },
+  { label: "Privacy Policy", to: "/privacy-policy" },
+  { label: "Terms & Conditions", to: "/terms" },
+];
+
+const SOCIAL_LINKS = [
+  { icon: Facebook, label: "Facebook", href: "https://facebook.com" },
+  { icon: Instagram, label: "Instagram", href: "https://instagram.com" },
+  { icon: Twitter, label: "Twitter", href: "https://twitter.com" },
+  { icon: Linkedin, label: "LinkedIn", href: "https://linkedin.com" },
+];
 
 const Footer = () => {
   const [email, setEmail] = useState("");
@@ -40,15 +63,16 @@ const Footer = () => {
       </div>
 
       <div className="container mx-auto px-4 lg:px-8 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8 lg:gap-10">
           {/* Brand + Newsletter */}
-          <div className="lg:col-span-2">
+          <div className="col-span-2">
             <h3 className="font-display text-2xl font-semibold mb-4">
               NØRD<span className="text-primary">.</span>
             </h3>
             <p className="text-background/60 font-body text-sm leading-relaxed mb-6">
               Crafting timeless furniture with natural materials and Scandinavian design principles since 2018.
             </p>
+            <h4 className="font-display text-sm font-semibold uppercase tracking-wider mb-3">Newsletter</h4>
             <form onSubmit={handleNewsletterSubmit} className="flex gap-2">
               <input
                 type="email"
@@ -68,28 +92,11 @@ const Footer = () => {
             </form>
           </div>
 
-          {/* Quick Links */}
-          <div>
-            <h4 className="font-display text-sm font-semibold uppercase tracking-wider mb-4">Quick Links</h4>
-            <ul className="space-y-2">
-              {["Shop", "About", "Blog", "Contact"].map((link) => (
-                <li key={link}>
-                  <Link
-                    to={`/${link.toLowerCase()}`}
-                    className="text-background/60 hover:text-primary text-sm font-body transition-colors"
-                  >
-                    {link}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
           {/* Categories */}
           <div>
             <h4 className="font-display text-sm font-semibold uppercase tracking-wider mb-4">Categories</h4>
             <ul className="space-y-2">
-              {["Living Room", "Bedroom", "Dining", "Office"].map((cat) => (
+              {CATEGORIES.map((cat) => (
                 <li key={cat}>
                   <Link
                     to={`/shop?category=${encodeURIComponent(cat)}`}
@@ -102,23 +109,82 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Contact */}
+          {/* Customer Service */}
           <div>
-            <h4 className="font-display text-sm font-semibold uppercase tracking-wider mb-4">Get in Touch</h4>
-            <ul className="space-y-3">
-              <li className="flex items-center gap-2 text-background/60 text-sm font-body">
-                <Mail className="h-4 w-4 text-primary" />
-                {getOverride("footer.email", "hello@nord-furniture.com")}
+            <h4 className="font-display text-sm font-semibold uppercase tracking-wider mb-4">Customer Service</h4>
+            <ul className="space-y-2">
+              {CUSTOMER_SERVICE.map((item) => (
+                <li key={item.label}>
+                  <Link
+                    to={item.to}
+                    className="text-background/60 hover:text-primary text-sm font-body transition-colors"
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Policies */}
+          <div>
+            <h4 className="font-display text-sm font-semibold uppercase tracking-wider mb-4">Policies</h4>
+            <ul className="space-y-2">
+              {POLICIES.map((item) => (
+                <li key={item.label}>
+                  <Link
+                    to={item.to}
+                    className="text-background/60 hover:text-primary text-sm font-body transition-colors"
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Contact Info + Social Media */}
+          <div>
+            <h4 className="font-display text-sm font-semibold uppercase tracking-wider mb-4">Contact Info</h4>
+            <ul className="space-y-3 mb-4">
+              <li>
+                <a
+                  href={`mailto:${getOverride("footer.email", "hello@nord-furniture.com")}`}
+                  className="flex items-center gap-2 text-background/60 hover:text-primary text-sm font-body transition-colors"
+                >
+                  <Mail className="h-4 w-4 text-primary shrink-0" />
+                  {getOverride("footer.email", "hello@nord-furniture.com")}
+                </a>
               </li>
-              <li className="flex items-center gap-2 text-background/60 text-sm font-body">
-                <Phone className="h-4 w-4 text-primary" />
-                {getOverride("footer.phone", "+1 (555) 123-4567")}
+              <li>
+                <a
+                  href={`tel:${getOverride("footer.phone", "+1 (555) 123-4567").replace(/[\s()\-]/g, "")}`}
+                  className="flex items-center gap-2 text-background/60 hover:text-primary text-sm font-body transition-colors"
+                >
+                  <Phone className="h-4 w-4 text-primary shrink-0" />
+                  {getOverride("footer.phone", "+1 (555) 123-4567")}
+                </a>
               </li>
-              <li className="flex items-center gap-2 text-background/60 text-sm font-body">
-                <MapPin className="h-4 w-4 text-primary" />
+              <li className="flex items-start gap-2 text-background/60 text-sm font-body">
+                <MapPin className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                 {getOverride("footer.location", "Stockholm, Sweden")}
               </li>
             </ul>
+            <h4 className="font-display text-sm font-semibold uppercase tracking-wider mb-3">Social Media</h4>
+            <div className="flex gap-2">
+              {SOCIAL_LINKS.map(({ icon: Icon, label, href }) => (
+                <a
+                  key={label}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={label}
+                  className="w-9 h-9 rounded-full bg-background/10 flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors"
+                >
+                  <Icon className="h-4 w-4" />
+                </a>
+              ))}
+            </div>
           </div>
         </div>
 

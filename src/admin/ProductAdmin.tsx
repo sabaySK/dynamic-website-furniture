@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getProducts, saveProducts, getCategories } from "@/lib/catalog";
-import type { Product, Category } from "@/data/products";
+import type { Product, Category, Material, Color } from "@/data/products";
+import { materials, colors } from "@/data/products";
 import { toast } from "sonner";
 
 const empty: Omit<Product, "id" | "image" | "rating"> & { image?: string; rating?: number } = {
@@ -15,6 +16,11 @@ const empty: Omit<Product, "id" | "image" | "rating"> & { image?: string; rating
   featured: false,
   isNew: false,
   reviews: 0,
+  material: [],
+  color: undefined,
+  colorOptions: undefined as Color[] | undefined,
+  inStock: true,
+  videoUrl: undefined as string | undefined,
 };
 
 const ProductAdmin = () => {
@@ -127,6 +133,11 @@ const ProductAdmin = () => {
       reviews: p.reviews ?? 0,
       image: p.image,
       rating: p.rating,
+      material: p.material ?? [],
+      color: p.color,
+      colorOptions: p.colorOptions,
+      inStock: p.inStock ?? true,
+      videoUrl: p.videoUrl,
     });
     setGalleryUrl("");
   };
@@ -167,6 +178,11 @@ const ProductAdmin = () => {
       isNew: !!form.isNew,
       rating: form.rating ?? 4.5,
       reviews: form.reviews ?? 0,
+      material: form.material?.length ? form.material : undefined,
+      color: form.color,
+      colorOptions: form.colorOptions?.length ? form.colorOptions : undefined,
+      inStock: form.inStock ?? true,
+      videoUrl: form.videoUrl || undefined,
     };
     const exists = items.some((i) => i.id === payload.id);
     const next = exists ? items.map((i) => (i.id === payload.id ? payload : i)) : [payload, ...items];
@@ -392,6 +408,80 @@ const ProductAdmin = () => {
               <input type="checkbox" checked={!!form.isNew} onChange={(e) => setForm({ ...form, isNew: e.target.checked })} />
               New
             </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.inStock !== false}
+                onChange={(e) => setForm({ ...form, inStock: e.target.checked })}
+              />
+              In Stock
+            </label>
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm font-display font-semibold">Material</p>
+            <div className="flex flex-wrap gap-2">
+              {materials.map((m) => (
+                <label key={m} className="flex items-center gap-1.5 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={(form.material ?? []).includes(m)}
+                    onChange={(e) => {
+                      const current = form.material ?? [];
+                      const next = e.target.checked
+                        ? [...current, m]
+                        : current.filter((x) => x !== m);
+                      setForm({ ...form, material: next });
+                    }}
+                  />
+                  {m}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm font-display font-semibold">Color</p>
+            <select
+              value={form.color ?? ""}
+              onChange={(e) => setForm({ ...form, color: (e.target.value || undefined) as Color | undefined })}
+              className="w-full bg-card border border-border rounded-lg px-4 py-3 text-sm"
+            >
+              <option value="">Any</option>
+              {colors.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm font-display font-semibold">Color Options (for product detail)</p>
+            <div className="flex flex-wrap gap-2">
+              {colors.map((c) => (
+                <label key={c} className="flex items-center gap-1.5 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={(form.colorOptions ?? []).includes(c)}
+                    onChange={(e) => {
+                      const current = form.colorOptions ?? [];
+                      const next = e.target.checked
+                        ? [...current, c]
+                        : current.filter((x) => x !== c);
+                      setForm({ ...form, colorOptions: next.length > 0 ? next : undefined });
+                    }}
+                  />
+                  {c}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm font-display font-semibold">Video URL (optional)</p>
+            <input
+              placeholder="https://www.youtube.com/embed/VIDEO_ID"
+              value={form.videoUrl ?? ""}
+              onChange={(e) => setForm({ ...form, videoUrl: e.target.value || undefined })}
+              className="w-full bg-card border border-border rounded-lg px-4 py-3 text-sm"
+            />
           </div>
           <div className="flex justify-end pt-2">
             <button onClick={save} className="bg-primary text-primary-foreground px-6 py-2 rounded-lg text-sm font-body">

@@ -8,7 +8,7 @@ export function getProducts(): Product[] {
   if (!raw) return defaultProducts;
   try {
     const parsed = JSON.parse(raw) as Product[];
-    if (!Array.isArray(parsed)) return defaultProducts;
+    if (!Array.isArray(parsed) || parsed.length === 0) return defaultProducts;
     return parsed;
   } catch {
     return defaultProducts;
