@@ -4,6 +4,9 @@ import { Mail, Phone, MapPin, Send } from "lucide-react";
 import { toast } from "sonner";
 import contactBanner from "@/assets/contact-banner.jpg";
 import { getOverride } from "@/lib/overrides";
+const MAP_EMBED_URL =
+  "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2032.787729387499!2d18.0686!3d59.3293!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x465f9d679c74d4a%3A0x9e0ef4c9a5a5a5a5!2sBirger%20Jarlsgatan%2C%20Stockholm%2C%20Sweden!5e0!3m2!1sen!2sse!4v1709769600000";
+
 const Contact = () => {
   const [form, setForm] = useState({ name: "", email: "", message: "" });
 
@@ -115,10 +118,15 @@ const Contact = () => {
                 </div>
                 <div>
                   <h4 className="font-display text-sm font-semibold mb-1">Address</h4>
-                  <p className="text-muted-foreground font-body text-sm">
+                  <a
+                    href="https://www.google.com/maps/search/Birger+Jarlsgatan+12+Stockholm"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-muted-foreground font-body text-sm hover:text-primary transition-colors"
+                  >
                     {getOverride("contact.address.line1", "Birger Jarlsgatan 12")}<br />
                     {getOverride("contact.address.line2", "114 34 Stockholm, Sweden")}
-                  </p>
+                  </a>
                 </div>
               </div>
 
@@ -128,9 +136,12 @@ const Contact = () => {
                 </div>
                 <div>
                   <h4 className="font-display text-sm font-semibold mb-1">Email</h4>
-                  <p className="text-muted-foreground font-body text-sm">
+                  <a
+                    href={`mailto:${getOverride("contact.email", "hello@nord-furniture.com")}`}
+                    className="text-muted-foreground font-body text-sm hover:text-primary transition-colors"
+                  >
                     {getOverride("contact.email", "hello@nord-furniture.com")}
-                  </p>
+                  </a>
                 </div>
               </div>
 
@@ -140,14 +151,40 @@ const Contact = () => {
                 </div>
                 <div>
                   <h4 className="font-display text-sm font-semibold mb-1">Phone</h4>
-                  <p className="text-muted-foreground font-body text-sm">
+                  <a
+                    href={`tel:${getOverride("contact.phone", "+15551234567").replace(/\s/g, "")}`}
+                    className="text-muted-foreground font-body text-sm hover:text-primary transition-colors"
+                  >
                     {getOverride("contact.phone", "+1 (555) 123-4567")}
-                  </p>
+                  </a>
                 </div>
               </div>
             </div>
           </motion.div>
         </div>
+
+        {/* Google Map */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mt-16 max-w-5xl mx-auto"
+        >
+          <h2 className="font-display text-2xl font-semibold mb-6">Find Us</h2>
+          <div className="rounded-xl overflow-hidden border border-border aspect-video w-full">
+            <iframe
+              title="NØRD Showroom Location"
+              src={MAP_EMBED_URL}
+              width="100%"
+              height="100%"
+              style={{ border: 0 }}
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              className="w-full h-full min-h-[300px]"
+            />
+          </div>
+        </motion.div>
       </div>
     </div>
   );

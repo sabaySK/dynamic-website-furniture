@@ -20,4 +20,34 @@ const Slider = React.forwardRef<
 ));
 Slider.displayName = SliderPrimitive.Root.displayName;
 
-export { Slider };
+const thumbClass =
+  "block h-5 w-5 rounded-full border-2 border-primary bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
+
+const SliderRange = React.forwardRef<
+  React.ElementRef<typeof SliderPrimitive.Root>,
+  Omit<React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root>, "value" | "onValueChange"> & {
+    value: [number, number];
+    onValueChange: (value: [number, number]) => void;
+  }
+>(({ className, value, onValueChange, min = 0, max = 100, step = 1, ...props }, ref) => (
+  <SliderPrimitive.Root
+    ref={ref}
+    className={cn("relative flex w-full touch-none select-none items-center", className)}
+    value={value}
+    onValueChange={(v) => onValueChange([v[0], v[1]])}
+    min={min}
+    max={max}
+    step={step}
+    minStepsBetweenThumbs={1}
+    {...props}
+  >
+    <SliderPrimitive.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-secondary">
+      <SliderPrimitive.Range className="absolute h-full bg-primary" />
+    </SliderPrimitive.Track>
+    <SliderPrimitive.Thumb className={thumbClass} />
+    <SliderPrimitive.Thumb className={thumbClass} />
+  </SliderPrimitive.Root>
+));
+SliderRange.displayName = "SliderRange";
+
+export { Slider, SliderRange };

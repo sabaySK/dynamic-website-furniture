@@ -1,17 +1,22 @@
 import { useState, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingBag, Star, Minus, Plus, ArrowLeft, Truck, RotateCcw, Shield, Send } from "lucide-react";
+import { ShoppingBag, Star, Minus, Plus, Truck, RotateCcw, Shield, Check, Package, Heart } from "lucide-react";
 import { getProducts } from "@/lib/catalog";
 import { useCart } from "@/context/CartContext";
+import { useWishlist } from "@/context/WishlistContext";
 import ProductCard from "@/components/ProductCard";
 import { toast } from "sonner";
+import type { Color } from "@/data/products";
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { addItem } = useCart();
+  const { isInWishlist, toggleItem } = useWishlist();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [selectedColor, setSelectedColor] = useState<Color | null>(null);
 
   const allProducts = getProducts();
   const product = allProducts.find((p) => p.id === id);
@@ -53,43 +58,19 @@ const ProductDetail = () => {
       addItem(product);
     }
     setQuantity(1);
+    toast.success("Added to cart");
   };
 
-  const handleTelegramContact = async () => {
-    const productUrl = `${window.location.origin}/product/${product.id}`;
-    const message = `ខ្ញុំសុំសួរព័ត៌មានខ្លះបានទេបង?\n\nខ្ញុំចាប់អារម្មណ៍នឹងទំនិញខាងក្រោម៖\n\n${product.name}\nPrice: $${product.price.toFixed(2)}\nLink: ${productUrl}`;
-
-    let copied = false;
-
-    try {
-      await navigator.clipboard.writeText(message);
-      copied = true;
-    } catch {
-      const textarea = document.createElement("textarea");
-      textarea.value = message;
-      textarea.style.position = "fixed";
-      textarea.style.left = "-9999px";
-      textarea.style.top = "0";
-      document.body.appendChild(textarea);
-      textarea.focus();
-      textarea.select();
-      try {
-        copied = document.execCommand("copy");
-      } catch {
-        copied = false;
-      }
-      document.body.removeChild(textarea);
+  const handleBuyNow = () => {
+    for (let i = 0; i < quantity; i++) {
+      addItem(product);
     }
-
-    if (!copied) {
-      window.prompt("Copy message to send on Telegram:", message);
-      toast.message("Copy the message, then paste into Telegram.");
-    } else {
-      toast.success("Message copied. Paste it in Telegram.");
-    }
-
-    window.open("https://t.me/TepSarak_dev", "_blank", "noopener,noreferrer");
+    setQuantity(1);
+    navigate("/cart");
   };
+
+  const colorOptions = product.colorOptions ?? (product.color ? [product.color] : []);
+  const displayColor = selectedColor ?? product.color ?? colorOptions[0];
 
   return (
     <div className="min-h-screen">
@@ -153,6 +134,22 @@ const ProductDetail = () => {
                 ))}
               </div>
             )}
+
+            {/* Product video (optional) */}
+            {product.videoUrl && (
+              <div className="mt-6">
+                <p className="text-sm font-body font-medium text-muted-foreground mb-2">Product video</p>
+                <div className="aspect-video rounded-xl overflow-hidden bg-muted">
+                  <iframe
+                    src={product.videoUrl}
+                    title={`${product.name} video`}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Product Info */}
@@ -162,8 +159,9 @@ const ProductDetail = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              {/* Badges */}
-              <div className="flex gap-2 mb-3">
+              {/* Badges + Wishlist */}
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <div className="flex gap-2">
                 {product.isNew && (
                   <span className="bg-secondary text-secondary-foreground text-xs font-body font-semibold px-3 py-1 rounded-full">
                     New Arrival
@@ -174,6 +172,16 @@ const ProductDetail = () => {
                     {discount}% Off
                   </span>
                 )}
+                </div>
+                <button
+                  onClick={() => toggleItem(product)}
+                  className={`p-2 rounded-full border border-border hover:border-primary transition-colors ${
+                    isInWishlist(product.id) ? "bg-primary/10 text-primary border-primary" : ""
+                  }`}
+                  aria-label={isInWishlist(product.id) ? "Remove from wishlist" : "Add to wishlist"}
+                >
+                  <Heart className={`h-4 w-4 ${isInWishlist(product.id) ? "fill-primary" : ""}`} />
+                </button>
               </div>
 
               {/* Category */}
@@ -206,7 +214,7 @@ const ProductDetail = () => {
               </div>
 
               {/* Price */}
-              <div className="flex items-baseline gap-3 mb-6">
+              <div className="flex items-baseline gap-3 mb-4">
                 <span className="font-display text-3xl font-bold text-foreground">
                   ${product.price.toFixed(2)}
                 </span>
@@ -217,17 +225,56 @@ const ProductDetail = () => {
                 )}
               </div>
 
+              {/* Stock status */}
+              <div className="flex items-center gap-2 mb-6">
+                <Package className="h-4 w-4 text-muted-foreground" />
+                <span className={`text-sm font-body font-medium ${product.inStock !== false ? "text-green-600" : "text-destructive"}`}>
+                  {product.inStock !== false ? "In Stock" : "Out of Stock"}
+                </span>
+              </div>
+
+              {/* Material */}
+              {product.material && product.material.length > 0 && (
+                <div className="mb-6">
+                  <p className="text-xs font-body font-medium text-muted-foreground uppercase tracking-wider mb-2">Material</p>
+                  <p className="text-sm font-body">{product.material.join(", ")}</p>
+                </div>
+              )}
+
+              {/* Color options */}
+              {colorOptions.length > 0 && (
+                <div className="mb-6">
+                  <p className="text-xs font-body font-medium text-muted-foreground uppercase tracking-wider mb-2">Color</p>
+                  <div className="flex flex-wrap gap-2">
+                    {colorOptions.map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => setSelectedColor(c)}
+                        className={`px-4 py-2 rounded-lg text-sm font-body border transition-colors ${
+                          displayColor === c
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border hover:border-primary/50"
+                        }`}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Description */}
               <p className="font-body text-muted-foreground leading-relaxed mb-8">
                 {product.longDescription || product.description}
               </p>
 
-              {/* Quantity + Add to Cart */}
+              {/* Quantity + Add to Cart + Buy Now */}
               <div className="flex flex-col sm:flex-row gap-4 mb-8">
                 <div className="flex items-center border border-border rounded-lg">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="p-3 text-muted-foreground hover:text-foreground transition-colors"
+                    disabled={product.inStock === false}
+                    className="p-3 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
                     aria-label="Decrease quantity"
                   >
                     <Minus className="h-4 w-4" />
@@ -237,7 +284,8 @@ const ProductDetail = () => {
                   </span>
                   <button
                     onClick={() => setQuantity(quantity + 1)}
-                    className="p-3 text-muted-foreground hover:text-foreground transition-colors"
+                    disabled={product.inStock === false}
+                    className="p-3 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
                     aria-label="Increase quantity"
                   >
                     <Plus className="h-4 w-4" />
@@ -245,18 +293,19 @@ const ProductDetail = () => {
                 </div>
                 <button
                   onClick={handleAddToCart}
-                  className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground py-3 px-8 rounded-lg font-body font-medium text-sm hover:bg-primary/90 transition-colors"
+                  disabled={product.inStock === false}
+                  className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground py-3 px-8 rounded-lg font-body font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ShoppingBag className="h-4 w-4" />
                   Add to Cart
                 </button>
                 <button
-                  type="button"
-                  onClick={handleTelegramContact}
-                  className="flex-1 flex items-center justify-center gap-2 bg-blue-500 text-white py-3 px-8 rounded-lg font-body font-medium text-sm hover:bg-blue-600 transition-colors"
+                  onClick={handleBuyNow}
+                  disabled={product.inStock === false}
+                  className="flex-1 flex items-center justify-center gap-2 border-2 border-primary text-primary py-3 px-8 rounded-lg font-body font-medium text-sm hover:bg-primary/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Send className="h-4 w-4" />
-                  Contact via Telegram
+                  <Check className="h-4 w-4" />
+                  Buy Now
                 </button>
               </div>
 
@@ -278,6 +327,19 @@ const ProductDetail = () => {
             </motion.div>
           </div>
         </div>
+
+        {/* Dimensions (from specs) */}
+        {product.specs?.Dimensions && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mt-16"
+          >
+            <h2 className="font-display text-2xl font-semibold mb-4">Dimensions</h2>
+            <p className="font-body text-muted-foreground">{product.specs.Dimensions}</p>
+          </motion.div>
+        )}
 
         {/* Specifications */}
         {product.specs && Object.keys(product.specs).length > 0 && (
@@ -309,6 +371,56 @@ const ProductDetail = () => {
             </div>
           </motion.div>
         )}
+
+        {/* Reviews */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mt-16"
+        >
+          <h2 className="font-display text-2xl font-semibold mb-6">Reviews</h2>
+          <div className="flex items-center gap-2 mb-6">
+            <div className="flex gap-0.5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star
+                  key={i}
+                  className={`h-5 w-5 ${
+                    i < Math.floor(product.rating)
+                      ? "fill-accent text-accent"
+                      : "fill-muted text-muted"
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="font-body text-muted-foreground">
+              {product.rating} out of 5 · {product.reviews ?? 0} reviews
+            </span>
+          </div>
+          <div className="space-y-6">
+            {[
+              { name: "Sarah M.", rating: 5, text: "Absolutely love this piece. The quality is exceptional and it looks even better in person.", date: "2 weeks ago" },
+              { name: "James K.", rating: 5, text: "Great craftsmanship. Delivery was smooth and the product exceeded my expectations.", date: "1 month ago" },
+              { name: "Emma L.", rating: 4, text: "Beautiful design. Minor assembly required but instructions were clear. Very happy with the purchase.", date: "2 months ago" },
+            ].slice(0, Math.min(3, product.reviews ?? 3)).map((r, i) => (
+              <div key={i} className="border-b border-border pb-6 last:border-0">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex gap-0.5">
+                    {Array.from({ length: 5 }).map((_, j) => (
+                      <Star
+                        key={j}
+                        className={`h-4 w-4 ${j < r.rating ? "fill-accent text-accent" : "fill-muted text-muted"}`}
+                      />
+                    ))}
+                  </div>
+                  <span className="font-display text-sm font-semibold">{r.name}</span>
+                  <span className="text-xs text-muted-foreground font-body">{r.date}</span>
+                </div>
+                <p className="font-body text-sm text-muted-foreground">{r.text}</p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
       </section>
 
       {/* Related Products */}

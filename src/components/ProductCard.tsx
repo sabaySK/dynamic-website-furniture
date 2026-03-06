@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 import { Product } from "@/data/products";
 import { useCart } from "@/context/CartContext";
-import { ShoppingBag, Star } from "lucide-react";
+import { useWishlist } from "@/context/WishlistContext";
+import { ShoppingBag, Star, Heart } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface ProductCardProps {
@@ -11,6 +12,7 @@ interface ProductCardProps {
 
 const ProductCard = ({ product, index = 0 }: ProductCardProps) => {
   const { addItem } = useCart();
+  const { isInWishlist, toggleItem } = useWishlist();
 
   const discountPercent = product.originalPrice
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
@@ -32,6 +34,18 @@ const ProductCard = ({ product, index = 0 }: ProductCardProps) => {
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           loading="lazy"
         />
+        {/* Wishlist */}
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleItem(product);
+          }}
+          className="absolute top-3 right-3 p-2 rounded-full bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all hover:bg-primary hover:text-primary-foreground z-10"
+          aria-label={isInWishlist(product.id) ? "Remove from wishlist" : "Add to wishlist"}
+        >
+          <Heart className={`h-4 w-4 ${isInWishlist(product.id) ? "fill-primary text-primary" : ""}`} />
+        </button>
         {/* Badges */}
         <div className="absolute top-3 left-3 flex gap-2">
           {product.isNew && (

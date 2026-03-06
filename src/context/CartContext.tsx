@@ -8,13 +8,10 @@ export interface CartItem {
 
 interface CartContextType {
   items: CartItem[];
-  isOpen: boolean;
   addItem: (product: Product) => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
-  openCart: () => void;
-  closeCart: () => void;
   totalItems: number;
   totalPrice: number;
 }
@@ -23,7 +20,6 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
 
   const addItem = useCallback((product: Product) => {
     setItems((prev) => {
@@ -37,7 +33,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return [...prev, { product, quantity: 1 }];
     });
-    setIsOpen(true);
   }, []);
 
   const removeItem = useCallback((productId: string) => {
@@ -57,8 +52,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const clearCart = useCallback(() => setItems([]), []);
-  const openCart = useCallback(() => setIsOpen(true), []);
-  const closeCart = useCallback(() => setIsOpen(false), []);
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = items.reduce(
@@ -70,13 +63,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <CartContext.Provider
       value={{
         items,
-        isOpen,
         addItem,
         removeItem,
         updateQuantity,
         clearCart,
-        openCart,
-        closeCart,
         totalItems,
         totalPrice,
       }}

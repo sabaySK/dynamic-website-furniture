@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ShoppingBag, Menu, X } from "lucide-react";
+import { ShoppingBag, Menu, X, User } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { motion, AnimatePresence } from "framer-motion";
 import AnnouncementBar from "@/components/AnnouncementBar";
@@ -14,7 +14,7 @@ const navLinks = [
 ];
 
 const Navbar = () => {
-  const { totalItems, openCart } = useCart();
+  const { totalItems } = useCart();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -48,10 +48,17 @@ const Navbar = () => {
 
           {/* Actions */}
           <div className="flex items-center gap-4">
-            <button
-              onClick={openCart}
+            <Link
+              to="/account"
+              className="p-2 text-foreground hover:text-primary transition-colors"
+              aria-label="Account"
+            >
+              <User className="h-5 w-5" />
+            </Link>
+            <Link
+              to="/cart"
               className="relative p-2 text-foreground hover:text-primary transition-colors"
-              aria-label="Open cart"
+              aria-label="View cart"
             >
               <ShoppingBag className="h-5 w-5" />
               {totalItems > 0 && (
@@ -59,7 +66,7 @@ const Navbar = () => {
                   {totalItems}
                 </span>
               )}
-            </button>
+            </Link>
 
             {/* Mobile menu toggle */}
             <button
@@ -88,15 +95,24 @@ const Navbar = () => {
                       to={link.to}
                       onClick={() => setMobileOpen(false)}
                       className={`block py-2 text-sm font-body font-medium transition-colors ${
-                        location.pathname === link.to
-                          ? "text-primary"
-                          : "text-muted-foreground"
+                        location.pathname === link.to ? "text-primary" : "text-muted-foreground"
                       }`}
                     >
                       {link.label}
                     </Link>
                   </li>
                 ))}
+                <li>
+                  <Link
+                    to="/account"
+                    onClick={() => setMobileOpen(false)}
+                    className={`block py-2 text-sm font-body font-medium transition-colors ${
+                      location.pathname === "/account" ? "text-primary" : "text-muted-foreground"
+                    }`}
+                  >
+                    Account
+                  </Link>
+                </li>
               </ul>
             </motion.div>
           )}

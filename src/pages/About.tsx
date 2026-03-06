@@ -1,8 +1,35 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Heart, Users, TreePine, Award, Star, ArrowRight } from "lucide-react";
+import { Heart, Users, TreePine, Award, Star, ArrowRight, Target, CheckCircle2 } from "lucide-react";
 import aboutImage from "@/assets/about-workshop.jpg";
+import productSofa from "@/assets/product-sofa.jpg";
+import productTable from "@/assets/product-table.jpg";
+import productChair from "@/assets/product-chair.jpg";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getOverride } from "@/lib/overrides";
+
+const workshopPhotos = [
+  { src: aboutImage, alt: "Our workshop in Stockholm" },
+  { src: productSofa, alt: "Crafting sofas by hand" },
+  { src: productTable, alt: "Woodworking at our factory" },
+  { src: productChair, alt: "Finishing touches" },
+];
+
+const team = [
+  { name: "Erik Lindström", role: "Founder & CEO", initials: "EL" },
+  { name: "Anna Berg", role: "Head of Design", initials: "AB" },
+  { name: "Marcus Holm", role: "Workshop Director", initials: "MH" },
+  { name: "Sofia Nilsson", role: "Sustainability Lead", initials: "SN" },
+];
+
+const whyChooseUs = [
+  "Handcrafted by skilled artisans using traditional techniques",
+  "FSC-certified wood and eco-friendly materials only",
+  "10-year warranty on all solid wood furniture",
+  "Carbon-neutral shipping worldwide",
+  "Direct from workshop—no middlemen, fair prices",
+  "Free design consultation for large orders",
+];
 
 const values = [
   {
@@ -55,18 +82,24 @@ const About = () => {
         </div>
       </section>
 
-      {/* Story */}
+      {/* Company Story */}
       <section className="py-20">
         <div className="container mx-auto px-4 lg:px-8">
+          <div className="text-center mb-12">
+            <p className="text-primary font-body text-sm uppercase tracking-[0.15em] mb-2">
+              About Us
+            </p>
+            <h2 className="font-display text-3xl md:text-4xl font-semibold">Company Story</h2>
+          </div>
           <div className="max-w-3xl mx-auto text-center">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
             >
-              <h2 className="font-display text-3xl font-semibold mb-6">
+              <h3 className="font-display text-2xl font-semibold mb-6">
                 Born in Stockholm. Designed for the World.
-              </h2>
+              </h3>
               <p className="text-muted-foreground font-body text-lg leading-relaxed mb-6">
                 NØRD was founded in 2018 with a simple belief: furniture should be honest. Honest materials, 
                 honest craftsmanship, honest design. We work directly with skilled artisans across Scandinavia 
@@ -77,6 +110,124 @@ const About = () => {
                 No shortcuts. No compromises. Just thoughtful design that gets better with age.
               </p>
             </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Mission */}
+      <section className="py-20 bg-card">
+        <div className="container mx-auto px-4 lg:px-8">
+          <div className="max-w-3xl mx-auto text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+            >
+              <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Target className="h-7 w-7 text-primary" />
+              </div>
+              <p className="text-primary font-body text-sm uppercase tracking-[0.15em] mb-2">
+                Our Purpose
+              </p>
+              <h2 className="font-display text-3xl md:text-4xl font-semibold mb-6">Our Mission</h2>
+              <p className="text-muted-foreground font-body text-lg leading-relaxed">
+                To create furniture that lasts generations—beautiful, honest, and made with care. 
+                We believe every home deserves pieces that tell a story and age with grace. 
+                By working directly with artisans and using sustainable materials, we bring 
+                Scandinavian craftsmanship to the world while protecting the planet for future generations.
+              </p>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Workshop / Factory Photos */}
+      <section className="py-20">
+        <div className="container mx-auto px-4 lg:px-8">
+          <div className="text-center mb-12">
+            <p className="text-primary font-body text-sm uppercase tracking-[0.15em] mb-2">
+              Behind the Scenes
+            </p>
+            <h2 className="font-display text-3xl md:text-4xl font-semibold">
+              Workshop & Factory
+            </h2>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
+            {workshopPhotos.map((photo, i) => (
+              <motion.div
+                key={photo.alt}
+                initial={{ opacity: 0, y: 15 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="rounded-xl overflow-hidden border border-border aspect-[4/3]"
+              >
+                <img
+                  src={photo.src}
+                  alt={photo.alt}
+                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                />
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Team */}
+      <section className="py-20 bg-card">
+        <div className="container mx-auto px-4 lg:px-8">
+          <div className="text-center mb-12">
+            <p className="text-primary font-body text-sm uppercase tracking-[0.15em] mb-2">
+              The People Behind NØRD
+            </p>
+            <h2 className="font-display text-3xl md:text-4xl font-semibold">Our Team</h2>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
+            {team.map((member, i) => (
+              <motion.div
+                key={member.name}
+                initial={{ opacity: 0, y: 15 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="text-center"
+              >
+                <Avatar className="h-20 w-20 mx-auto mb-4 border-2 border-primary/20">
+                  <AvatarFallback className="bg-primary/10 text-primary font-display font-semibold text-lg">
+                    {member.initials}
+                  </AvatarFallback>
+                </Avatar>
+                <h3 className="font-display font-semibold">{member.name}</h3>
+                <p className="text-sm text-muted-foreground font-body">{member.role}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Why Choose Us */}
+      <section className="py-20">
+        <div className="container mx-auto px-4 lg:px-8">
+          <div className="text-center mb-12">
+            <p className="text-primary font-body text-sm uppercase tracking-[0.15em] mb-2">
+              The NØRD Difference
+            </p>
+            <h2 className="font-display text-3xl md:text-4xl font-semibold">Why Choose Us</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {whyChooseUs.map((item, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -10 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.08 }}
+                className="flex items-start gap-4 p-4 rounded-xl bg-card border border-border"
+              >
+                <CheckCircle2 className="h-6 w-6 text-primary shrink-0 mt-0.5" />
+                <p className="font-body text-sm text-foreground">{item}</p>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>

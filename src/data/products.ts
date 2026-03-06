@@ -8,6 +8,12 @@ import productBed from "@/assets/product-bed.jpg";
 
 export type Category = "Living Room" | "Bedroom" | "Dining" | "Office" | "Lighting" | "Storage";
 
+export type Material = "Wood" | "Metal" | "Fabric";
+export type Color = "Natural" | "Black" | "White" | "Walnut" | "Oak" | "Grey";
+
+export const materials: Material[] = ["Wood", "Metal", "Fabric"];
+export const colors: Color[] = ["Natural", "Black", "White", "Walnut", "Oak", "Grey"];
+
 export interface Product {
   id: string;
   name: string;
@@ -23,6 +29,11 @@ export interface Product {
   isNew?: boolean;
   rating: number;
   reviews?: number;
+  material?: Material[];
+  color?: Color;
+  colorOptions?: Color[];
+  inStock?: boolean;
+  videoUrl?: string;
 }
 
 export interface BlogPost {
@@ -63,6 +74,11 @@ export const products: Product[] = [
     featured: true,
     rating: 4.8,
     reviews: 124,
+    material: ["Wood", "Fabric"],
+    color: "Natural",
+    colorOptions: ["Natural", "Grey", "Black"],
+    inStock: true,
+    videoUrl: "https://www.youtube.com/embed/nVjsGKrE9E8",
   },
   {
     id: "2",
@@ -77,6 +93,9 @@ export const products: Product[] = [
     featured: true,
     rating: 4.9,
     reviews: 87,
+    material: ["Wood"],
+    color: "Oak",
+    inStock: true,
   },
   {
     id: "3",
@@ -91,6 +110,9 @@ export const products: Product[] = [
     featured: true,
     rating: 4.7,
     reviews: 63,
+    material: ["Wood"],
+    color: "Oak",
+    inStock: true,
   },
   {
     id: "4",
@@ -106,6 +128,9 @@ export const products: Product[] = [
     isNew: true,
     rating: 4.6,
     reviews: 41,
+    material: ["Metal"],
+    color: "Black",
+    inStock: true,
   },
   {
     id: "5",
@@ -121,6 +146,9 @@ export const products: Product[] = [
     isNew: true,
     rating: 4.9,
     reviews: 96,
+    material: ["Wood", "Fabric"],
+    color: "Walnut",
+    inStock: true,
   },
   {
     id: "6",
@@ -134,6 +162,9 @@ export const products: Product[] = [
     specs: { "Diameter": "90 cm", "Height": "40 cm", "Weight": "22 kg", "Material": "Solid European Oak", "Finish": "Natural Oil", "Assembly": "None required" },
     rating: 4.5,
     reviews: 58,
+    material: ["Wood"],
+    color: "Oak",
+    inStock: true,
   },
   {
     id: "7",
@@ -148,6 +179,9 @@ export const products: Product[] = [
     isNew: true,
     rating: 4.8,
     reviews: 72,
+    material: ["Wood"],
+    color: "Oak",
+    inStock: true,
   },
   {
     id: "8",
@@ -161,6 +195,9 @@ export const products: Product[] = [
     specs: { "Dimensions": "120 × 60 × 75 cm", "Weight": "28 kg", "Material": "Solid Oak", "Drawers": "2 with soft-close", "Cable Management": "Integrated rear channel", "Finish": "Natural Oil" },
     rating: 4.4,
     reviews: 35,
+    material: ["Wood"],
+    color: "Oak",
+    inStock: false,
   },
 ];
 
@@ -224,5 +261,84 @@ export const blogPosts: BlogPost[] = [
     readTime: "6 min",
     image: productChair,
     tags: ["Small Spaces", "Interior Tips", "Modular"],
+  },
+  {
+    id: "4",
+    title: "Living Room Design Ideas",
+    excerpt: "Inspiration for creating a cozy, stylish living room that reflects your personality and lifestyle.",
+    content: [
+      "The living room is the heart of the home—a place for relaxation, conversation, and making memories. Whether you prefer minimalist Scandinavian aesthetics or a more eclectic mix, the key is to create a space that feels both inviting and functional.",
+      "Start with your focal point. For many, it's the sofa—the anchor of the room. Choose a piece that balances comfort with style. A neutral-toned sofa offers flexibility for changing accents, while a bold statement piece can define the entire space.",
+      "Layer textures to add depth. Combine linen upholstery with a wool throw, a wooden coffee table with a ceramic vase. The interplay of materials creates visual interest and tactile warmth.",
+      "Lighting sets the mood. Combine ambient overhead light with task lamps for reading and accent lights to highlight artwork or plants. Dimmers are essential for transitioning from day to evening.",
+      "Don't forget the power of plants. A few well-placed indoor plants bring life and freshness to any living room. Choose low-maintenance varieties like pothos or snake plants if you're new to plant care.",
+    ],
+    date: "2026-02-15",
+    author: "Emma Lindström",
+    authorRole: "Head of Design",
+    category: "Design",
+    readTime: "4 min",
+    image: productSofa,
+    tags: ["Living Room", "Interior Design", "Styling"],
+  },
+  {
+    id: "5",
+    title: "Best Sofa for Small House",
+    excerpt: "How to choose the perfect sofa when space is limited—without sacrificing comfort or style.",
+    content: [
+      "Finding the right sofa for a small living room can feel like solving a puzzle. You need comfort, style, and proportions that work—all within a tight footprint. Here's how to make the right choice.",
+      "Measure twice, buy once. Before you shop, measure your space and leave at least 30 inches for walkways. A sofa that's too large will make the room feel cramped; too small and it can look lost.",
+      "Consider scale over size. A low-profile sofa with clean lines can seat three people while occupying less visual space than a bulky sectional. Look for sofas with exposed legs—they create an airy feel.",
+      "Modular and sectional options offer flexibility. A two-seater with a chaise can be reconfigured as your needs change. Some designs allow you to add or remove modules over time.",
+      "Fabric choice matters. Light colors and subtle patterns can make a sofa feel less imposing. Velvet and linen both work well in small spaces—velvet adds depth, linen keeps things light.",
+      "Finally, think multi-function. A sofa bed or one with built-in storage can maximize every square inch of your small home.",
+    ],
+    date: "2026-02-20",
+    author: "Sofia Bergman",
+    authorRole: "Interior Stylist",
+    category: "Tips",
+    readTime: "5 min",
+    image: productSofa,
+    tags: ["Sofa", "Small Spaces", "Buying Guide"],
+  },
+  {
+    id: "6",
+    title: "How to Choose Dining Table",
+    excerpt: "A practical guide to selecting the perfect dining table for your space, style, and lifestyle.",
+    content: [
+      "The dining table is where families gather, friends share meals, and memories are made. Choosing the right one requires balancing size, material, style, and durability.",
+      "Start with capacity. How many people do you need to seat regularly? Allow 24–30 inches per person for comfort. A 6-seater typically needs a table around 72 inches long; for 8, aim for 96 inches.",
+      "Consider your space. A round table works well in square rooms and encourages conversation. Rectangular tables suit longer rooms. Extendable tables offer flexibility for occasional guests.",
+      "Material affects both aesthetics and maintenance. Solid wood—oak, walnut, maple—ages beautifully and can be refinished. It's an investment that lasts generations. Veneer offers a similar look at a lower price. Glass tops feel light and modern but require more care.",
+      "Think about your lifestyle. Do you have young children? A durable, easy-to-clean surface matters. Do you host often? Extendable leaves or a larger fixed size might be worth it.",
+      "Finally, match the table to your chairs—or intentionally mix styles for an eclectic look. The dining area should feel cohesive with the rest of your home.",
+    ],
+    date: "2026-02-25",
+    author: "Lars Andersen",
+    authorRole: "Founder & Master Craftsman",
+    category: "Buying Guide",
+    readTime: "5 min",
+    image: productDining,
+    tags: ["Dining Table", "Buying Guide", "Furniture"],
+  },
+  {
+    id: "7",
+    title: "Furniture Care Tips",
+    excerpt: "Keep your wooden and upholstered furniture looking beautiful for years with these simple care practices.",
+    content: [
+      "Quality furniture deserves quality care. With a few simple habits, you can keep your pieces looking and performing their best for decades.",
+      "For solid wood furniture: Dust regularly with a soft, dry cloth. Avoid harsh chemicals—a damp cloth with mild soap is sufficient for spills. Use coasters under drinks and placemats under hot dishes to prevent rings and heat damage. Reapply oil or wax finishes annually to maintain the wood's luster and protection.",
+      "For upholstered pieces: Vacuum weekly to remove dust and allergens. Rotate cushions periodically to ensure even wear. Address spills immediately—blot, don't rub—and use a fabric-appropriate cleaner. Consider professional cleaning every 1–2 years for deep cleaning.",
+      "Protect from sun and heat. Direct sunlight can fade wood and fabrics over time. Use curtains or blinds during peak hours. Keep furniture away from radiators and vents to prevent drying and cracking.",
+      "Handle with care. When moving furniture, lift rather than drag to protect legs and joints. Use felt pads under chair and table legs to prevent scratches on floors.",
+      "With these practices, your furniture will age gracefully and serve your home for generations.",
+    ],
+    date: "2026-03-01",
+    author: "Lars Andersen",
+    authorRole: "Founder & Master Craftsman",
+    category: "Care",
+    readTime: "4 min",
+    image: productShelf,
+    tags: ["Care", "Maintenance", "Wood", "Upholstery"],
   },
 ];
