@@ -18,6 +18,8 @@ import Contact from "./pages/Contact";
 import ProductDetail from "./pages/ProductDetail";
 import Account from "./pages/Account";
 import OrderTracking from "./pages/OrderTracking";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 import ShippingPolicy from "./pages/ShippingPolicy";
 import ReturnPolicy from "./pages/ReturnPolicy";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -76,6 +78,8 @@ const App = () => {
                           <Route path="/contact" element={<Contact />} />
                           <Route path="/product/:id" element={<ProductDetail />} />
                           <Route path="/account" element={<Account />} />
+                          <Route path="/login" element={<Login />} />
+                          <Route path="/register" element={<Register />} />
                           <Route path="/account/orders/:orderId" element={<OrderTracking />} />
                           <Route path="/shipping-policy" element={<ShippingPolicy />} />
                           <Route path="/return-policy" element={<ReturnPolicy />} />

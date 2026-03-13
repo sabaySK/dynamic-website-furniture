@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useWishlist } from "@/context/WishlistContext";
 import { getProducts } from "@/lib/catalog";
+import { fetchProfile } from "@/services/authentication/profile.service";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -146,6 +147,33 @@ const Account = () => {
     } catch {
       setOrders(STATIC_ORDERS);
     }
+
+    // fetch profile from API if available
+    (async function loadProfile() {
+      try {
+        const res = await fetchProfile();
+        console.log("Profile API response:", res);
+        const user = res?.user;
+        if (user) {
+          const serverProfile: Profile = {
+            name: user.name ?? "",
+            email: user.email ?? "",
+            phone: user.phone ?? "",
+            address: user.address ?? "",
+          };
+          setProfile(serverProfile);
+          try {
+            localStorage.setItem(STORAGE_PROFILE, JSON.stringify(serverProfile));
+          } catch {}
+        } else {
+          // API returned no user object
+          toast.error("Could not load profile from server");
+        }
+      } catch (err) {
+        console.error("Error fetching profile:", err);
+        toast.error("Could not load profile from server");
+      }
+    })();
   }, []);
 
   const saveProfile = () => {

@@ -10,9 +10,9 @@ if (typeof globalThis.crypto === "undefined") {
 }
 
 const API_DOMAINS = {
-  development: "https://rokka-api.codingate.asia",
-  uat: "https://uat-rokka-api.codingate.asia",
-  production: "https://api.rokkaresidences.com",
+  development: "http://127.0.0.1:8000",
+  uat: "http://127.0.0.1:8000",
+  production: "http://127.0.0.1:8000",
 };
 
 export default defineConfig(({ mode }) => {
@@ -33,7 +33,9 @@ export default defineConfig(({ mode }) => {
         "/api": {
           target: apiTarget,
           changeOrigin: true,
-          secure: true,
+          secure: false,
+          // rewrite cookie domain from backend (127.0.0.1) to frontend host (localhost)
+          cookieDomainRewrite: "localhost",
         },
       },
     },
