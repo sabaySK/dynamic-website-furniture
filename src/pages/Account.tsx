@@ -431,6 +431,11 @@ const Account = () => {
             {tab === "addresses" && (
               <div className="space-y-6">
                 <h2 className="font-display text-xl font-semibold">Saved Addresses</h2>
+                {profile.name && (
+                  <p className="text-sm text-muted-foreground font-body">
+                    Addresses for {profile.name}
+                  </p>
+                )}
                 <div className="space-y-4">
                   {addresses.map((a) => (
                     <div
