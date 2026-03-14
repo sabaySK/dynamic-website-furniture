@@ -18,86 +18,87 @@ import Contact from "./pages/Contact";
 import ProductDetail from "./pages/ProductDetail";
 import Account from "./pages/Account";
 import OrderTracking from "./pages/OrderTracking";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 import ShippingPolicy from "./pages/ShippingPolicy";
 import ReturnPolicy from "./pages/ReturnPolicy";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Terms from "./pages/Terms";
 import NotFound from "./pages/NotFound";
 import ScrollToTop from "@/components/ScrollToTop";
-import AdminLayout from "./admin/AdminLayout";
-import BannerList from "./admin/BannerList";
-import BannerAdmin from "./admin/BannerAdmin";
-import FooterAdmin from "./admin/FooterAdmin";
-import IndexAdmin from "./admin/IndexAdmin";
-import ContactAdmin from "./admin/ContactAdmin";
-import BlogAdmin from "./admin/BlogAdmin";
-import ShopAdmin from "./admin/ShopAdmin";
-import ProductAdmin from "./admin/ProductAdmin";
+import { requestNotificationPermission } from "@/firebase-messaging.js";
+import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <CartProvider>
-        <WishlistProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <ScrollToTop />
-          <Routes>
-            {/* User-facing routes with navbar and footer */}
-            <Route path="/*" element={
-              <div className="flex flex-col min-h-screen">
-                <Navbar />
-                <main className="flex-1">
-                  <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/shop" element={<Shop />} />
-                    <Route path="/cart" element={<Cart />} />
-                    <Route path="/checkout" element={<Checkout />} />
-                    <Route path="/about" element={<About />} />
-                    <Route path="/blog" element={<Blog />} />
-                    <Route path="/blog/:id" element={<BlogDetail />} />
-                    <Route path="/contact" element={<Contact />} />
-                    <Route path="/product/:id" element={<ProductDetail />} />
-                    <Route path="/account" element={<Account />} />
-                    <Route path="/account/orders/:orderId" element={<OrderTracking />} />
-                    <Route path="/shipping-policy" element={<ShippingPolicy />} />
-                    <Route path="/return-policy" element={<ReturnPolicy />} />
-                    <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                    <Route path="/terms" element={<Terms />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </main>
-                <Footer />
-              </div>
-            } />
-            
-            {/* Admin routes without navbar and footer */}
-            <Route path="/admin/*" element={
-              <div className="flex flex-col min-h-screen">
-                <main className="flex-1">
-                  <Routes>
-                    <Route path="/" element={<AdminLayout />}>
-                      <Route path="banner" element={<BannerList />} />
-                      <Route path="index" element={<IndexAdmin />} />
-                      <Route path="products" element={<ProductAdmin />} />
-                      <Route path="footer" element={<FooterAdmin />} />
-                      <Route path="contact" element={<ContactAdmin />} />
-                      <Route path="blog" element={<BlogAdmin />} />
-                      <Route path="shop" element={<ShopAdmin />} />
-                    </Route>
-                  </Routes>
-                </main>
-              </div>
-            } />
-          </Routes>
-        </BrowserRouter>
-      </WishlistProvider>
-      </CartProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  useEffect(() => {
+    console.log("App mounted: requesting notification permission...");
+    if (typeof window === "undefined") {
+      console.warn("Window is undefined - skipping notification request");
+      return;
+    }
+    if (!("Notification" in window)) {
+      console.warn("Notifications not supported in this browser");
+      return;
+    }
+    if (!("serviceWorker" in navigator)) {
+      console.warn("Service workers not supported in this browser");
+      return;
+    }
+
+    requestNotificationPermission();
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <CartProvider>
+          <WishlistProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <ScrollToTop />
+              <Routes>
+                {/* User-facing routes with navbar and footer */}
+                <Route
+                  path="/*"
+                  element={
+                    <div className="flex flex-col min-h-screen">
+                      <Navbar />
+                      <main className="flex-1">
+                        <Routes>
+                          <Route path="/" element={<Index />} />
+                          <Route path="/shop" element={<Shop />} />
+                          <Route path="/cart" element={<Cart />} />
+                          <Route path="/checkout" element={<Checkout />} />
+                          <Route path="/about" element={<About />} />
+                          <Route path="/blog" element={<Blog />} />
+                          <Route path="/blog/:id" element={<BlogDetail />} />
+                          <Route path="/contact" element={<Contact />} />
+                          <Route path="/product/:id" element={<ProductDetail />} />
+                          <Route path="/account" element={<Account />} />
+                          <Route path="/login" element={<Login />} />
+                          <Route path="/register" element={<Register />} />
+                          <Route path="/account/orders/:orderId" element={<OrderTracking />} />
+                          <Route path="/shipping-policy" element={<ShippingPolicy />} />
+                          <Route path="/return-policy" element={<ReturnPolicy />} />
+                          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                          <Route path="/terms" element={<Terms />} />
+                          <Route path="*" element={<NotFound />} />
+                        </Routes>
+                      </main>
+                      <Footer />
+                    </div>
+                  }
+                />
+              </Routes>
+            </BrowserRouter>
+          </WishlistProvider>
+        </CartProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
