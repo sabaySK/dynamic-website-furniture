@@ -1,36 +1,33 @@
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarGroup, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger, SidebarGroupLabel } from "@/components/ui/sidebar";
-import { Quote, Image as ImageIcon, ShoppingBag, Settings, Phone, BookOpen } from "lucide-react";
+import { Quote, Image as ImageIcon, ShoppingBag, Settings, Phone, BookOpen, Users, HelpCircle, Heart, Award } from "lucide-react";
+
+
+
+
 
 const nav = [
-  { to: "/admin/index", label: "Customer Stories", Icon: Quote },
-  { to: "/admin/products", label: "Products", Icon: ShoppingBag },
   { to: "/admin/banner", label: "Banner", Icon: ImageIcon },
-  { to: "/admin/footer", label: "Footer", Icon: Settings },
+  { to: "/admin/index", label: "Customer Stories", Icon: Quote },
+  { to: "/admin/categories", label: "Categories", Icon: BookOpen },
+  { to: "/admin/brands", label: "Brands", Icon: BookOpen },
+  { to: "/admin/products", label: "Products", Icon: ShoppingBag },
+  { to: "/admin/about", label: "About", Icon: Settings },
+  { to: "/admin/team", label: "Team", Icon: Users },
+  { to: "/admin/why-choose", label: "Why Choose Us", Icon: HelpCircle },
+  { to: "/admin/values", label: "Our Values", Icon: Heart },
+  { to: "/admin/certifications", label: "Certifications", Icon: Award },
   { to: "/admin/contact", label: "Contact", Icon: Phone },
-  { to: "/admin/shop", label: "Shop", Icon: ShoppingBag },
-  { to: "/admin/blog", label: "Blog", Icon: BookOpen },
 ];
+
+
+
+
 
 const AdminLayout = () => {
   const location = useLocation();
   const current = nav.find((n) => location.pathname.startsWith(n.to))?.label || "Admin";
-  const desc =
-    current === "Customer Stories"
-      ? "Manage content and presentation for customer testimonials"
-      : current === "Products"
-      ? "Create, edit, and organize products"
-      : current === "Banner"
-      ? "Configure hero banners and page headers"
-      : current === "Footer"
-      ? "Update footer contact and details"
-      : current === "Contact"
-      ? "Edit contact information and showroom details"
-      : current === "Shop"
-      ? "Adjust shop page settings"
-      : current === "Blog"
-      ? "Manage blog header content"
-      : "Administration";
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex">
@@ -79,12 +76,7 @@ const AdminLayout = () => {
           <div className="p-0 w-full flex-1">
             <div className="p-0 w-full h-full">
               <div className="bg-card border-0 border-t border-border rounded-none shadow-sm p-0 w-full h-full">
-                <div className="flex items-center justify-between mb-4 p-4 md:p-6 w-full">
-                  <div className="w-full">
-                    <h1 className="text-xl font-display font-semibold">{current}</h1>
-                    <p className="text-sm font-body text-muted-foreground">{desc}</p>
-                  </div>
-                </div>
+
                 <div className="p-0 md:p-0 w-full h-full flex-1">
                   <div className="w-full h-full">
                     <Outlet />

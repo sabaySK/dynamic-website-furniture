@@ -1,38 +1,51 @@
 import { useState, useEffect } from "react";
 import { setOverrides, getOverride } from "@/lib/overrides";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit, Eye } from "lucide-react";
 import TestimonialsSection from "@/components/home/TestimonialsSection";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 type TestimonialItem = {
-  name: string;
-  location: string;
-  rating: number;
-  text: string;
-  product: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  address: string;
+  password?: string;
 };
 
 const defaultTestimonials: TestimonialItem[] = [
   {
-    name: "Anna K.",
-    location: "Stockholm, Sweden",
-    rating: 5,
-    text: "The Nordic Linen Sofa transformed our living room. The craftsmanship is incredible — you can feel the quality the moment you sit down.",
-    product: "Nordic Linen Sofa",
+    fullName: "Anna K.",
+    email: "saff@gmail.com",
+    phone: "0968255000",
+    address: "The Nordic Linen Sofa transformed our living room. The craftsmanship is incredible — you can feel the quality the moment you sit down.",
   },
   {
-    name: "Marcus T.",
-    location: "Copenhagen, Denmark",
-    rating: 5,
-    text: "We ordered the Artisan Dining Table and it's even more beautiful in person. Our family gathers around it every evening now.",
-    product: "Artisan Dining Table",
+    fullName: "Marcus T.",
+    email: "saff@gmail.com",
+    phone: "0968255000",
+    address: "We ordered the Artisan Dining Table and it's even more beautiful in person. Our family gathers around it every evening now.",
   },
   {
-    name: "Sophie L.",
-    location: "Oslo, Norway",
-    rating: 5,
-    text: "Exceptional quality and the design consultation was so helpful. The team helped us furnish our entire apartment in one cohesive style.",
-    product: "Full Home Package",
+    fullName: "Sophie L.",
+    email: "saff@gmail.com",
+    phone: "0968255000",
+    address: "Exceptional quality and the design consultation was so helpful. The team helped us furnish our entire apartment in one cohesive style.",
   },
 ];
 
@@ -41,13 +54,11 @@ function safeParseTestimonials(raw: string): TestimonialItem[] | null {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return null;
     const normalized: TestimonialItem[] = parsed.map((t: any) => {
-      const rating = Number(t?.rating);
       return {
-        name: typeof t?.name === "string" ? t.name : "",
-        location: typeof t?.location === "string" ? t.location : "",
-        rating: Number.isFinite(rating) ? Math.min(5, Math.max(1, rating)) : 5,
-        text: typeof t?.text === "string" ? t.text : "",
-        product: typeof t?.product === "string" ? t.product : "",
+        fullName: typeof t?.fullName === "string" ? t.fullName : (typeof t?.name === "string" ? t.name : ""),
+        email: typeof t?.email === "string" ? t.email : (typeof t?.location === "string" ? t.location : ""),
+        phone: typeof t?.phone === "string" ? t.phone : (t?.rating != null ? String(t.rating) : ""),
+        address: typeof t?.address === "string" ? t.address : (typeof t?.text === "string" ? t.text : ""),
       };
     });
     return normalized.length > 0 ? normalized : null;
@@ -59,6 +70,21 @@ function safeParseTestimonials(raw: string): TestimonialItem[] | null {
 const IndexAdmin = () => {
   const [items, setItems] = useState<TestimonialItem[]>(defaultTestimonials);
   const [saving, setSaving] = useState(false);
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+
+  const [newCustomer, setNewCustomer] = useState<TestimonialItem>({
+    fullName: "",
+    email: "",
+    phone: "",
+    address: "",
+  });
+
+  const [editingCustomer, setEditingCustomer] = useState<TestimonialItem | null>(null);
+  const [viewingCustomer, setViewingCustomer] = useState<TestimonialItem | null>(null);
 
   useEffect(() => {
     const overrideItemsRaw = getOverride("index.testimonials.items", "");
@@ -66,21 +92,53 @@ const IndexAdmin = () => {
     setItems(parsed ?? defaultTestimonials);
   }, []);
 
-  const addBox = () => {
-    setItems((prev) => [
-      ...prev,
-      {
-        name: "",
-        location: "",
-        rating: 5,
-        text: "",
-        product: "",
-      },
-    ]);
+  const handleAddSubmit = () => {
+    if (!newCustomer.fullName.trim() || !newCustomer.phone.trim() || !newCustomer.password?.trim()) {
+      toast.error("Please fill in Name, Phone, and Password.");
+      return;
+    }
+    if (newCustomer.email.trim() && !newCustomer.email.trim().endsWith("@gmail.com")) {
+      toast.error("Email must be a @gmail.com address.");
+      return;
+    }
+    setItems((prev) => [...prev, newCustomer]);
+    setNewCustomer({
+      fullName: "",
+      email: "",
+      phone: "",
+      address: "",
+      password: "",
+    });
+    setIsAddOpen(false);
+  };
+
+  const openEdit = (index: number) => {
+    setSelectedIdx(index);
+    setEditingCustomer({ ...items[index] });
+    setIsEditOpen(true);
+  };
+
+  const handleEditSubmit = () => {
+    if (selectedIdx === null || !editingCustomer) return;
+    if (!editingCustomer.fullName.trim() || !editingCustomer.phone.trim() || !editingCustomer.password?.trim()) {
+      toast.error("Please fill in Name, Phone, and Password.");
+      return;
+    }
+    if (editingCustomer.email.trim() && !editingCustomer.email.trim().endsWith("@gmail.com")) {
+      toast.error("Email must be a @gmail.com address.");
+      return;
+    }
+    setItems((prev) => prev.map((it, i) => (i === selectedIdx ? editingCustomer : it)));
+    setIsEditOpen(false);
+  };
+
+  const openView = (index: number) => {
+    setViewingCustomer(items[index]);
+    setIsViewOpen(true);
   };
 
   const updateItem = (index: number, patch: Partial<TestimonialItem>) => {
-    setItems((prev) => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
+    setItems((prev) => prev.map((it, i) => (i === selectedIdx ? { ...it, ...patch } : it)));
   };
 
   const removeItem = (index: number) => {
@@ -105,126 +163,274 @@ const IndexAdmin = () => {
   };
 
   return (
-    <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div className="w-full">
       <div className="bg-card border border-border rounded-lg shadow-sm w-full max-w-none">
         <div className="p-4 space-y-4">
-          <div>
+          <div className="space-y-4">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="text-sm font-display font-semibold">Boxes</h3>
-                <p className="text-xs text-muted-foreground font-body">Add / edit the testimonial description boxes.</p>
+                <h3 className="text-sm font-display font-semibold">Customers</h3>
+                <p className="text-xs text-muted-foreground font-body">Manage customer testimonials.</p>
               </div>
-              <button
-                type="button"
-                onClick={addBox}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-body hover:bg-muted/50 transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                Add Box
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {items.map((it, idx) => (
-                <div key={idx} className="border border-border rounded-lg p-3 bg-background/40">
-                  <div className="flex items-center justify-between gap-3 mb-3">
-                    <p className="text-sm font-body font-medium">Box {idx + 1}</p>
-                    <button
-                      type="button"
-                      onClick={() => removeItem(idx)}
-                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-body hover:bg-muted/50 transition-colors"
-                      disabled={items.length <= 1}
-                      title={items.length <= 1 ? "At least one box is required" : "Remove"}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Remove
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+                <DialogTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-body hover:bg-muted/50 transition-colors"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Customer
+                  </button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create Customer</DialogTitle>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
                     <div className="space-y-2">
-                      <label className="block text-xs font-body font-medium">Name</label>
+                      <label className="text-xs font-body font-medium">Full Name*</label>
                       <input
-                        value={it.name}
-                        onChange={(e) => updateItem(idx, { name: e.target.value })}
-                        className="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                        required
+                        value={newCustomer.fullName}
+                        onChange={(e) => setNewCustomer({ ...newCustomer, fullName: e.target.value })}
+                        className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                        placeholder="John Doe"
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="block text-xs font-body font-medium">Location</label>
+                      <label className="text-xs font-body font-medium">Email</label>
                       <input
-                        value={it.location}
-                        onChange={(e) => updateItem(idx, { location: e.target.value })}
-                        className="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                        type="email"
+                        pattern=".+@gmail\.com"
+                        value={newCustomer.email}
+                        onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
+                        className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                        placeholder="john@gmail.com"
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="block text-xs font-body font-medium">Product</label>
+                      <label className="text-xs font-body font-medium">Phone*</label>
                       <input
-                        value={it.product}
-                        onChange={(e) => updateItem(idx, { product: e.target.value })}
-                        className="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                        required
+                        value={newCustomer.phone}
+                        onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
+                        className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                        placeholder="+1 234 567 890"
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="block text-xs font-body font-medium">Rating (1-5)</label>
+                      <label className="text-xs font-body font-medium">Password*</label>
                       <input
-                        type="number"
-                        min={1}
-                        max={5}
-                        value={it.rating}
-                        onChange={(e) => updateItem(idx, { rating: Number(e.target.value) })}
-                        className="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                        required
+                        type="password"
+                        value={newCustomer.password || ""}
+                        onChange={(e) => setNewCustomer({ ...newCustomer, password: e.target.value })}
+                        className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                        placeholder="••••••••"
                       />
                     </div>
-                    <div className="space-y-2 md:col-span-2">
-                      <label className="block text-xs font-body font-medium">Description</label>
+                    <div className="space-y-2">
+                      <label className="text-xs font-body font-medium">Address</label>
                       <textarea
+                        value={newCustomer.address}
+                        onChange={(e) => setNewCustomer({ ...newCustomer, address: e.target.value })}
+                        className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none resize-none"
+                        placeholder="Full Address"
                         rows={3}
-                        value={it.text}
-                        onChange={(e) => updateItem(idx, { text: e.target.value })}
-                        className="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none resize-none"
                       />
                     </div>
                   </div>
-                </div>
-              ))}
+                  <DialogFooter>
+                    <button
+                      onClick={() => setIsAddOpen(false)}
+                      className="px-4 py-2 rounded-lg border border-border text-sm font-body hover:bg-muted/50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleAddSubmit}
+                      className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-body hover:bg-primary/90 transition-colors"
+                    >
+                      Save Customer
+                    </button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <div className="border border-border rounded-lg overflow-hidden">
+              <Table className="table-fixed min-w-[800px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[15%]">Full Name</TableHead>
+                    <TableHead className="w-[20%]">Email</TableHead>
+                    <TableHead className="w-[15%]">Phone</TableHead>
+                    <TableHead className="w-[35%]">Address</TableHead>
+                    <TableHead className="w-[15%]">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.map((it, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell className="p-2 align-middle">
+                        <span className="px-2 py-1.5 text-sm font-body truncate block w-full">
+                          {it.fullName}
+                        </span>
+                      </TableCell>
+                      <TableCell className="p-2 align-middle">
+                        <span className="px-2 py-1.5 text-sm font-body truncate block w-full">
+                          {it.email}
+                        </span>
+                      </TableCell>
+                      <TableCell className="p-2 align-middle">
+                        <span className="px-2 py-1.5 text-sm font-body truncate block w-full">
+                          {it.phone}
+                        </span>
+                      </TableCell>
+                      <TableCell className="p-2 align-middle">
+                        <span className="px-2 py-1.5 text-sm font-body truncate block w-full">
+                          {it.address}
+                        </span>
+                      </TableCell>
+                      <TableCell className="p-2 align-middle">
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => openView(idx)}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted/50 transition-colors"
+                            title="View"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openEdit(idx)}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted/50 transition-colors"
+                            title="Edit"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeItem(idx)}
+                            disabled={items.length <= 1}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-colors disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
+                            title={items.length <= 1 ? "At least one customer is required" : "Remove"}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {/* Edit Dialog */}
+              <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Edit Customer</DialogTitle>
+                  </DialogHeader>
+                  {editingCustomer && (
+                    <div className="grid gap-4 py-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-body font-medium">Full Name*</label>
+                        <input
+                          required
+                          value={editingCustomer.fullName}
+                          onChange={(e) => setEditingCustomer({ ...editingCustomer, fullName: e.target.value })}
+                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-body font-medium">Email</label>
+                        <input
+                          type="email"
+                          pattern=".+@gmail\.com"
+                          value={editingCustomer.email}
+                          onChange={(e) => setEditingCustomer({ ...editingCustomer, email: e.target.value })}
+                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                          placeholder="john@gmail.com"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-body font-medium">Phone*</label>
+                        <input
+                          required
+                          value={editingCustomer.phone}
+                          onChange={(e) => setEditingCustomer({ ...editingCustomer, phone: e.target.value })}
+                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-body font-medium">Password*</label>
+                        <input
+                          required
+                          type="password"
+                          value={editingCustomer.password || ""}
+                          onChange={(e) => setEditingCustomer({ ...editingCustomer, password: e.target.value })}
+                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                          placeholder="••••••••"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-body font-medium">Address</label>
+                        <textarea
+                          value={editingCustomer.address}
+                          onChange={(e) => setEditingCustomer({ ...editingCustomer, address: e.target.value })}
+                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none resize-none"
+                          rows={3}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  <DialogFooter>
+                    <button onClick={() => setIsEditOpen(false)} className="px-4 py-2 rounded-lg border border-border text-sm font-body hover:bg-muted/50 transition-colors">
+                      Cancel
+                    </button>
+                    <button onClick={handleEditSubmit} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-body hover:bg-primary/90 transition-colors">
+                      Save Changes
+                    </button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              {/* View Dialog */}
+              <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>View Customer</DialogTitle>
+                  </DialogHeader>
+                  {viewingCustomer && (
+                    <div className="grid gap-4 py-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground font-body">Full Name</p>
+                        <p className="font-body text-sm font-medium">{viewingCustomer.fullName}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground font-body">Email</p>
+                        <p className="font-body text-sm">{viewingCustomer.email || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground font-body">Phone</p>
+                        <p className="font-body text-sm">{viewingCustomer.phone || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground font-body">Address</p>
+                        <p className="font-body text-sm whitespace-pre-wrap">{viewingCustomer.address || "—"}</p>
+                      </div>
+                    </div>
+                  )}
+                  <DialogFooter>
+                    <button onClick={() => setIsViewOpen(false)} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-body hover:bg-primary/90 transition-colors">
+                      Close
+                    </button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
-
-          <div className="flex items-center justify-end gap-3 pt-2">
-            <button
-              onClick={cancel}
-              className="px-5 py-2 rounded-lg border border-border text-sm font-body hover:bg-muted/50 transition-colors"
-              disabled={saving}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => window.open("/", "_blank")}
-              className="px-5 py-2 rounded-lg border border-border text-sm font-body hover:bg-muted/50 transition-colors"
-            >
-              Preview Site
-            </button>
-            <button
-              onClick={save}
-              disabled={saving}
-              className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-2 rounded-lg text-sm font-body hover:bg-primary/90 transition-colors disabled:opacity-50"
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {saving ? "Saving..." : "Save"}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-card border border-border rounded-lg shadow-sm w-full max-w-none overflow-hidden">
-        <div className="p-4 border-b border-border">
-          <h2 className="text-base font-display font-semibold">Preview</h2>
-          <p className="text-sm text-muted-foreground font-body">Live preview of the Customer Stories section header.</p>
-        </div>
-        <div className="bg-background">
-          <TestimonialsSection />
         </div>
       </div>
     </div>

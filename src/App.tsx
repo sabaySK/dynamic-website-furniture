@@ -30,9 +30,19 @@ import BannerAdmin from "./admin/BannerAdmin";
 import FooterAdmin from "./admin/FooterAdmin";
 import IndexAdmin from "./admin/IndexAdmin";
 import ContactAdmin from "./admin/ContactAdmin";
-import BlogAdmin from "./admin/BlogAdmin";
-import ShopAdmin from "./admin/ShopAdmin";
+import BrandsAdmin from "./admin/BrandsAdmin";
+import AboutAdmin from "./admin/AboutAdmin";
+
 import ProductAdmin from "./admin/ProductAdmin";
+import CategoryAdmin from "./admin/Category";
+import TeamAdmin from "./admin/TeamAdmin";
+import WhyChooseAdmin from "./admin/WhyChooseAdmin";
+import ValuesAdmin from "./admin/ValuesAdmin";
+import CertificationsAdmin from "./admin/CertificationsAdmin";
+
+
+
+
 
 const queryClient = new QueryClient();
 
@@ -82,12 +92,22 @@ const App = () => (
                     <Route path="/" element={<AdminLayout />}>
                       <Route path="banner" element={<BannerList />} />
                       <Route path="index" element={<IndexAdmin />} />
+                      <Route path="categories" element={<CategoryAdmin />} />
                       <Route path="products" element={<ProductAdmin />} />
                       <Route path="footer" element={<FooterAdmin />} />
                       <Route path="contact" element={<ContactAdmin />} />
-                      <Route path="blog" element={<BlogAdmin />} />
-                      <Route path="shop" element={<ShopAdmin />} />
+                      <Route path="brands" element={<BrandsAdmin />} />
+                      <Route path="about" element={<AboutAdmin />} />
+
+                      <Route path="team" element={<TeamAdmin />} />
+                      <Route path="why-choose" element={<WhyChooseAdmin />} />
+                      <Route path="values" element={<ValuesAdmin />} />
+                      <Route path="certifications" element={<CertificationsAdmin />} />
                     </Route>
+
+
+
+
                   </Routes>
                 </main>
               </div>

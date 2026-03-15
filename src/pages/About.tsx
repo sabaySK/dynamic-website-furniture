@@ -8,12 +8,13 @@ import productChair from "@/assets/product-chair.jpg";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getOverride } from "@/lib/overrides";
 
-const workshopPhotos = [
+const workshopPhotosDefault = [
   { src: aboutImage, alt: "Our workshop in Stockholm" },
   { src: productSofa, alt: "Crafting sofas by hand" },
   { src: productTable, alt: "Woodworking at our factory" },
   { src: productChair, alt: "Finishing touches" },
 ];
+
 
 const team = [
   { name: "Erik Lindström", role: "Founder & CEO", initials: "EL" },
@@ -57,7 +58,19 @@ const certifications = [
 ];
 
 const About = () => {
+  const workshopImagesRaw = getOverride("about.workshop.images", "");
+  let workshopPhotos = workshopPhotosDefault;
+  if (workshopImagesRaw) {
+    try {
+      const parsed = JSON.parse(workshopImagesRaw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        workshopPhotos = parsed.map((img, i) => ({ src: img, alt: `Workshop photo ${i + 1}` }));
+      }
+    } catch (e) {}
+  }
+
   return (
+
     <div className="min-h-screen">
       {/* Hero */}
       <section className="relative h-[50vh] min-h-[400px] flex items-center overflow-hidden">
@@ -100,15 +113,10 @@ const About = () => {
               <h3 className="font-display text-2xl font-semibold mb-6">
                 Born in Stockholm. Designed for the World.
               </h3>
-              <p className="text-muted-foreground font-body text-lg leading-relaxed mb-6">
-                NØRD was founded in 2018 with a simple belief: furniture should be honest. Honest materials, 
-                honest craftsmanship, honest design. We work directly with skilled artisans across Scandinavia 
-                to create pieces that are both beautiful and built to last generations.
+              <p className="text-muted-foreground font-body text-lg leading-relaxed mb-6 whitespace-pre-line">
+                {getOverride("about.story.content", "NØRD was founded in 2018 with a simple belief: furniture should be honest. Honest materials, honest craftsmanship, honest design. We work directly with skilled artisans across Scandinavia to create pieces that are both beautiful and built to last generations.")}
               </p>
-              <p className="text-muted-foreground font-body text-lg leading-relaxed">
-                Every product starts as a sketch on paper and ends as a timeless piece in your home. 
-                No shortcuts. No compromises. Just thoughtful design that gets better with age.
-              </p>
+
             </motion.div>
           </div>
         </div>
@@ -123,19 +131,22 @@ const About = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
             >
-              <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Target className="h-7 w-7 text-primary" />
+              <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 overflow-hidden">
+                {getOverride("about.mission.icon", "") ? (
+                  <img src={getOverride("about.mission.icon", "")} alt="Mission Icon" className="w-full h-full object-cover" />
+                ) : (
+                  <Target className="h-7 w-7 text-primary" />
+                )}
               </div>
+
               <p className="text-primary font-body text-sm uppercase tracking-[0.15em] mb-2">
                 Our Purpose
               </p>
               <h2 className="font-display text-3xl md:text-4xl font-semibold mb-6">Our Mission</h2>
-              <p className="text-muted-foreground font-body text-lg leading-relaxed">
-                To create furniture that lasts generations—beautiful, honest, and made with care. 
-                We believe every home deserves pieces that tell a story and age with grace. 
-                By working directly with artisans and using sustainable materials, we bring 
-                Scandinavian craftsmanship to the world while protecting the planet for future generations.
+              <p className="text-muted-foreground font-body text-lg leading-relaxed whitespace-pre-line">
+                {getOverride("about.mission.content", "To create furniture that lasts generations—beautiful, honest, and made with care. We believe every home deserves pieces that tell a story and age with grace. By working directly with artisans and using sustainable materials, we bring Scandinavian craftsmanship to the world while protecting the planet for future generations.")}
               </p>
+
             </motion.div>
           </div>
         </div>

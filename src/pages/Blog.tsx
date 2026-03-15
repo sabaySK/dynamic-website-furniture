@@ -7,19 +7,31 @@ import { getOverride } from "@/lib/overrides";
 const Blog = () => {
   return (
     <div className="min-h-screen">
-      {/* Header */}
-      <section className="bg-card py-16 border-b border-border">
-        <div className="container mx-auto px-4 lg:px-8 text-center">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            <p className="text-primary font-body text-sm uppercase tracking-[0.15em] mb-2">
+      {/* Hero */}
+      <section className="relative h-[50vh] min-h-[400px] flex items-center overflow-hidden">
+        <img
+          src={getOverride("blog.banner.image", "https://images.unsplash.com/photo-1540518614846-7eded433c457?q=80&w=2070&auto=format&fit=crop")}
+          alt="The Journal"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-foreground/60" />
+        <div className="container mx-auto px-4 lg:px-8 relative z-10 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <p className="text-primary-foreground/60 font-body text-xs md:text-sm uppercase tracking-[0.4em] mb-4">
               {getOverride("blog.banner.preTitle", "Stories & Inspiration")}
             </p>
-            <h1 className="font-display text-4xl md:text-5xl font-semibold">
+            <h1 className="font-display text-5xl md:text-7xl lg:text-8xl font-bold text-primary-foreground leading-tight">
               {getOverride("blog.banner.title", "The Journal")}
             </h1>
+            <div className="w-20 h-1 bg-primary mx-auto mt-8 opacity-60" />
+
           </motion.div>
         </div>
       </section>
+
 
       <div className="container mx-auto px-4 lg:px-8 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">

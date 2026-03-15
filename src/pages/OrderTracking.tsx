@@ -65,7 +65,7 @@ function getOrders(): Order[] {
       const stored = Array.isArray(parsed) ? parsed : [];
       return stored.length > 0 ? [...stored, ...STATIC_ORDERS] : STATIC_ORDERS;
     }
-  } catch {}
+  } catch { }
   return STATIC_ORDERS;
 }
 
@@ -140,62 +140,83 @@ const OrderTracking = () => {
           </div>
         </motion.div>
 
-        {/* Process timeline */}
+        {/* Process timeline - Horizontal Steps */}
         <motion.section
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
-          className="bg-card rounded-2xl border border-border p-6 sm:p-8 mb-8 shadow-sm"
+          className="bg-card rounded-2xl border border-border p-6 sm:p-10 mb-8 shadow-sm overflow-hidden"
         >
-          <h2 className="font-display text-lg font-semibold mb-6">Order Progress</h2>
-          <div className="relative">
-            {/* Vertical line */}
-            <div className="absolute left-5 top-6 bottom-6 w-px bg-border" />
+          <div className="flex flex-col items-center mb-10">
+            <h2 className="font-display text-xl font-semibold mb-1">Order Progress</h2>
+            <p className="text-sm text-muted-foreground font-body">Follow your furniture's journey</p>
+          </div>
 
-            <div className="space-y-0">
+          <div className="relative">
+            {/* Progress Track Background */}
+            <div className="absolute top-5 left-[12.5%] right-[12.5%] h-0.5 bg-muted hidden sm:block" />
+
+            {/* Active Progress Fill */}
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${(stepIndex / (ORDER_STEPS.length - 1)) * 75}%` }}
+              transition={{ duration: 1, ease: "circOut", delay: 0.5 }}
+              className="absolute top-5 left-[12.5%] h-0.5 bg-primary hidden sm:block"
+            />
+
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-8 sm:gap-0 relative z-10">
               {ORDER_STEPS.map((step, i) => {
                 const isCompleted = i < stepIndex;
                 const isCurrent = i === stepIndex;
                 const Icon = step.icon;
+
                 return (
-                  <motion.div
-                    key={step.key}
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.3, delay: 0.15 + i * 0.08 }}
-                    className="relative flex gap-5 pb-8 last:pb-0"
-                  >
-                    <div
-                      className={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                        isCompleted
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : isCurrent
-                            ? "border-primary bg-background text-primary"
-                            : "border-muted bg-muted/50 text-muted-foreground"
-                      }`}
-                    >
-                      {isCompleted ? (
-                        <CheckCircle2 className="h-5 w-5" />
-                      ) : (
-                        <Icon className="h-5 w-5" />
+                  <div key={step.key} className="flex flex-row sm:flex-col items-center text-left sm:text-center group">
+                    <div className="relative sm:mb-4">
+                      {/* Circle indicator */}
+                      <motion.div
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ duration: 0.3, delay: 0.2 + i * 0.1 }}
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-500 shadow-sm ${isCompleted
+                            ? "border-primary bg-primary text-primary-foreground shadow-primary/20"
+                            : isCurrent
+                              ? "border-primary bg-background text-primary ring-4 ring-primary/10"
+                              : "border-muted bg-muted/30 text-muted-foreground"
+                          }`}
+                      >
+                        {isCompleted ? (
+                          <CheckCircle2 className="h-5 w-5" />
+                        ) : (
+                          <Icon className="h-5 w-5" />
+                        )}
+                      </motion.div>
+
+                      {/* Mobile connecting line */}
+                      {i < ORDER_STEPS.length - 1 && (
+                        <div className="absolute left-5 top-10 w-px h-8 bg-border sm:hidden" />
                       )}
                     </div>
-                    <div className="flex-1 min-w-0 pt-1">
+
+                    <div className="ml-4 sm:ml-0 px-2">
                       <p
-                        className={`font-display font-medium ${
-                          isCompleted || isCurrent ? "text-foreground" : "text-muted-foreground"
-                        }`}
+                        className={`font-display text-sm font-semibold transition-colors duration-300 ${isCompleted || isCurrent ? "text-foreground" : "text-muted-foreground"
+                          }`}
                       >
                         {step.label}
                       </p>
-                      <p className="text-sm text-muted-foreground font-body mt-0.5">
+                      <p className="text-[11px] leading-tight text-muted-foreground font-body mt-0.5 max-w-[120px] sm:mx-auto">
                         {step.desc}
                       </p>
+
                       {isCurrent && (
-                        <p className="text-xs text-primary font-medium mt-2">Current step</p>
+                        <motion.div
+                          layoutId="active-dot"
+                          className="w-1.5 h-1.5 bg-primary rounded-full mt-2 mx-auto hidden sm:block"
+                        />
                       )}
                     </div>
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>
