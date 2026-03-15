@@ -20,6 +20,54 @@ export interface ProfilePayload {
 }
 
 export async function fetchProfile(): Promise<ProfilePayload> {
+  // DEMO MODE: Simulate profile fetch success
+  console.log("DEMO MODE: Simulating profile fetch");
+  
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      // Get the current user from localStorage if it was set during login
+      const storedUser = localStorage.getItem("current_user");
+      let user: ProfileUser | null = null;
+      
+      if (storedUser) {
+        try {
+          const parsed = JSON.parse(storedUser);
+          user = {
+            id: parsed.id ?? 1,
+            name: parsed.name ?? "Demo User",
+            email: parsed.email ?? "demo@example.com",
+            phone: parsed.phone ?? "0968255000",
+            address: "123 Scandinavian St, NØRD City",
+            role: "user",
+            status: "active",
+            created_at: new Date().toISOString()
+          };
+        } catch (e) {
+          console.error("Demo Mode: Error parsing stored user", e);
+        }
+      } else {
+        // Fallback for demo
+        user = {
+          id: 1,
+          name: "Demo User",
+          email: "demo@example.com",
+          phone: "0968255000",
+          address: "123 Scandinavian St, NØRD City",
+          role: "user",
+          status: "active",
+          created_at: new Date().toISOString()
+        };
+      }
+
+      console.log("DEMO MODE: Profile success", user);
+      resolve({
+        message: "Profile fetched successfully (Demo Mode)",
+        user
+      });
+    }, 500);
+  });
+
+  /* Original implementation commented out for Demo
   try {
     const res = await fetch(authRoutes.profile, {
       method: "GET",
@@ -64,5 +112,5 @@ export async function fetchProfile(): Promise<ProfilePayload> {
     console.error("Fetch profile failed", err);
     throw err;
   }
+  */
 }
-

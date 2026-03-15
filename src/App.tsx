@@ -28,6 +28,7 @@ import NotFound from "./pages/NotFound";
 import ScrollToTop from "@/components/ScrollToTop";
 
 import AdminLayout from "./admin/AdminLayout";
+import Dashboard from "./admin/Dashboard";
 import BannerList from "./admin/BannerList";
 import BannerAdmin from "./admin/BannerAdmin";
 import FooterAdmin from "./admin/FooterAdmin";
@@ -42,6 +43,8 @@ import TeamAdmin from "./admin/TeamAdmin";
 import WhyChooseAdmin from "./admin/WhyChooseAdmin";
 import ValuesAdmin from "./admin/ValuesAdmin";
 import CertificationsAdmin from "./admin/CertificationsAdmin";
+import PoliciesAdmin from "./admin/PoliciesAdmin";
+import AdminLogin from "./admin/login";
 
 import { requestNotificationPermission } from "@/firebase-messaging.js";
 import { useEffect } from "react";
@@ -114,10 +117,12 @@ const App = () => {
                 <Route
                   path="/admin/*"
                   element={
-                    <div className="flex flex-col min-h-screen">
-                      <main className="flex-1">
+                    <div className="flex flex-col min-h-screen w-full">
+                      <main className="flex-1 w-full">
                         <Routes>
                           <Route path="/" element={<AdminLayout />}>
+                            <Route index element={<Dashboard />} />
+                            <Route path="dashboard" element={<Dashboard />} />
                             <Route path="banner" element={<BannerList />} />
                             <Route path="index" element={<IndexAdmin />} />
                             <Route path="categories" element={<CategoryAdmin />} />
@@ -130,7 +135,9 @@ const App = () => {
                             <Route path="why-choose" element={<WhyChooseAdmin />} />
                             <Route path="values" element={<ValuesAdmin />} />
                             <Route path="certifications" element={<CertificationsAdmin />} />
+                            <Route path="policies" element={<PoliciesAdmin />} />
                           </Route>
+                          <Route path="login" element={<AdminLogin />} />
                         </Routes>
                       </main>
                     </div>

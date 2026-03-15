@@ -1,12 +1,14 @@
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarGroup, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger, SidebarGroupLabel } from "@/components/ui/sidebar";
-import { Quote, Image as ImageIcon, ShoppingBag, Settings, Phone, BookOpen, Users, HelpCircle, Heart, Award } from "lucide-react";
+import { Quote, Image as ImageIcon, ShoppingBag, Settings, Phone, BookOpen, Users, HelpCircle, Heart, Award, LayoutDashboard, FileText } from "lucide-react";
+import { NavUser } from "./NavUser";
 
 
 
 
 
 const nav = [
+  { to: "/admin/dashboard", label: "Dashboard", Icon: LayoutDashboard },
   { to: "/admin/banner", label: "Banner", Icon: ImageIcon },
   { to: "/admin/index", label: "Customer Stories", Icon: Quote },
   { to: "/admin/categories", label: "Categories", Icon: BookOpen },
@@ -17,6 +19,7 @@ const nav = [
   { to: "/admin/why-choose", label: "Why Choose Us", Icon: HelpCircle },
   { to: "/admin/values", label: "Our Values", Icon: Heart },
   { to: "/admin/certifications", label: "Certifications", Icon: Award },
+  { to: "/admin/policies", label: "Policies", Icon: FileText },
   { to: "/admin/contact", label: "Contact", Icon: Phone },
 ];
 
@@ -30,10 +33,10 @@ const AdminLayout = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex">
-        <Sidebar className="w-64" variant="inset" collapsible="icon">
-          <SidebarHeader>
-            <span className="text-lg font-display font-semibold">Admin Panel</span>
+      <div className="min-h-screen flex w-full">
+        <Sidebar className="w-64 border-r border-border" variant="sidebar" collapsible="icon">
+          <SidebarHeader className="border-b border-border py-4">
+            <span className="text-lg font-display font-semibold px-2">Admin Panel</span>
           </SidebarHeader>
           <SidebarContent>
             <SidebarGroup>
@@ -60,31 +63,23 @@ const AdminLayout = () => {
             </SidebarGroup>
           </SidebarContent>
           <SidebarFooter>
+            <NavUser />
           </SidebarFooter>
         </Sidebar>
-        <SidebarInset>
-          <div className="sticky top-0 z-20 bg-background/95 backdrop-blur border-b border-border">
-            <div className="px-1 sm:px-2 md:px-4 lg:px-6 flex items-center justify-between h-12 sm:h-14 md:h-16">
-              <div className="flex items-center gap-3">
-                <SidebarTrigger />
-                <span className="text-sm font-body text-muted-foreground">Admin</span>
-                <span className="text-sm font-body">/</span>
-                <span className="text-sm font-body font-medium">{current}</span>
+        <SidebarInset className="bg-background w-full max-w-none">
+          <header className="sticky top-0 z-20 bg-background/95 backdrop-blur border-b border-border">
+            <div className="px-4 flex items-center gap-4 h-16">
+              <SidebarTrigger />
+              <div className="flex items-center gap-2 text-sm text-muted-foreground font-body">
+                <span className="hover:text-foreground transition-colors cursor-default">Admin</span>
+                <span>/</span>
+                <span className="font-medium text-foreground">{current}</span>
               </div>
             </div>
-          </div>
-          <div className="p-0 w-full flex-1">
-            <div className="p-0 w-full h-full">
-              <div className="bg-card border-0 border-t border-border rounded-none shadow-sm p-0 w-full h-full">
-
-                <div className="p-0 md:p-0 w-full h-full flex-1">
-                  <div className="w-full h-full">
-                    <Outlet />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          </header>
+          <main className="flex-1 w-full overflow-y-auto">
+            <Outlet />
+          </main>
         </SidebarInset>
       </div>
     </SidebarProvider>
