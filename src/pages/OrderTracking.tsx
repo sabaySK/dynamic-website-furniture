@@ -179,10 +179,10 @@ const OrderTracking = () => {
                         animate={{ scale: 1, opacity: 1 }}
                         transition={{ duration: 0.3, delay: 0.2 + i * 0.1 }}
                         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-500 shadow-sm ${isCompleted
-                            ? "border-primary bg-primary text-primary-foreground shadow-primary/20"
-                            : isCurrent
-                              ? "border-primary bg-background text-primary ring-4 ring-primary/10"
-                              : "border-muted bg-muted/30 text-muted-foreground"
+                          ? "border-primary bg-primary text-primary-foreground shadow-primary/20"
+                          : isCurrent
+                            ? "border-primary bg-background text-primary ring-4 ring-primary/10"
+                            : "border-muted bg-muted/30 text-muted-foreground"
                           }`}
                       >
                         {isCompleted ? (

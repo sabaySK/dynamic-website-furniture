@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ShoppingBag, Menu, X, User } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -16,6 +16,7 @@ const navLinks = [
 const Navbar = () => {
   const { totalItems } = useCart();
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -48,13 +49,20 @@ const Navbar = () => {
 
           {/* Actions */}
           <div className="flex items-center gap-4">
-            <Link
-              to="/account"
+            <button
+              onClick={() => {
+                const user = localStorage.getItem("current_user");
+                if (user) {
+                  navigate("/account");
+                } else {
+                  navigate("/login");
+                }
+              }}
               className="p-2 text-foreground hover:text-primary transition-colors"
               aria-label="Account"
             >
               <User className="h-5 w-5" />
-            </Link>
+            </button>
             <Link
               to="/cart"
               className="relative p-2 text-foreground hover:text-primary transition-colors"
@@ -103,15 +111,22 @@ const Navbar = () => {
                   </li>
                 ))}
                 <li>
-                  <Link
-                    to="/account"
-                    onClick={() => setMobileOpen(false)}
-                    className={`block py-2 text-sm font-body font-medium transition-colors ${
+                  <button
+                    onClick={() => {
+                      setMobileOpen(false);
+                      const user = localStorage.getItem("current_user");
+                      if (user) {
+                        navigate("/account");
+                      } else {
+                        navigate("/login");
+                      }
+                    }}
+                    className={`w-full text-left block py-2 text-sm font-body font-medium transition-colors ${
                       location.pathname === "/account" ? "text-primary" : "text-muted-foreground"
                     }`}
                   >
                     Account
-                  </Link>
+                  </button>
                 </li>
               </ul>
             </motion.div>
