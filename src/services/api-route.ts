@@ -21,3 +21,11 @@ export const authRoutes = {
   register: "/api/websites/register",
   profile: "/api/websites/profile",
 } as const;
+
+export const showroomRoutes = {
+  get: "/websites/showrooms",
+} as const;
+
+export const contactRoutes = {
+  get: "/admin/contact",
+} as const;
