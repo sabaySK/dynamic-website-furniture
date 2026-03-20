@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Mail, Phone, MapPin, ArrowRight, Truck, Shield, RotateCcw, Facebook, Instagram, Twitter, Linkedin } from "lucide-react";
 import { toast } from "sonner";
-import { getOverride } from "@/lib/overrides";
+import contactService, { ContactItem as ServiceContactItem } from "@/services/contact/contact.service";
+import { formatPhoneNumber, toTelHref } from "@/lib/phone-number";
 
 const CATEGORIES = ["Living Room", "Bedroom", "Dining", "Office", "Lighting", "Storage"];
 
@@ -20,15 +21,32 @@ const POLICIES = [
   { label: "Terms & Conditions", to: "/terms" },
 ];
 
-const SOCIAL_LINKS = [
-  { icon: Facebook, label: "Facebook", href: "https://facebook.com" },
-  { icon: Instagram, label: "Instagram", href: "https://instagram.com" },
-  { icon: Twitter, label: "Twitter", href: "https://twitter.com" },
-  { icon: Linkedin, label: "LinkedIn", href: "https://linkedin.com" },
-];
+/* removed static social links — footer will use API-provided social_media when available */
 
 const Footer = () => {
   const [email, setEmail] = useState("");
+  const [contact, setContact] = useState<ServiceContactItem | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const c = await contactService.fetchContact({ suppress401Redirect: true });
+        const normalized = Array.isArray(c) ? c[0] : c;
+        if (mounted) setContact(normalized);
+      } catch (err) {
+        console.error("Failed to load footer contact:", err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleNewsletterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,43 +165,73 @@ const Footer = () => {
           <div>
             <h4 className="font-display text-sm font-semibold uppercase tracking-wider mb-4">Contact Info</h4>
             <ul className="space-y-3 mb-4">
-              <li>
-                <a
-                  href={`mailto:${getOverride("footer.email", "hello@nord-furniture.com")}`}
-                  className="flex items-center gap-2 text-background/60 hover:text-primary text-sm font-body transition-colors"
-                >
-                  <Mail className="h-4 w-4 text-primary shrink-0" />
-                  {getOverride("footer.email", "hello@nord-furniture.com")}
-                </a>
-              </li>
-              <li>
-                <a
-                  href={`tel:${getOverride("footer.phone", "+1 (555) 123-4567").replace(/[\s()\-]/g, "")}`}
-                  className="flex items-center gap-2 text-background/60 hover:text-primary text-sm font-body transition-colors"
-                >
-                  <Phone className="h-4 w-4 text-primary shrink-0" />
-                  {getOverride("footer.phone", "+1 (555) 123-4567")}
-                </a>
-              </li>
-              <li className="flex items-start gap-2 text-background/60 text-sm font-body">
-                <MapPin className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                {getOverride("footer.location", "Stockholm, Sweden")}
-              </li>
+              {contact?.email && (
+                <li>
+                  <a
+                    href={`mailto:${contact.email}`}
+                    className="flex items-center gap-2 text-background/60 hover:text-primary text-sm font-body transition-colors"
+                  >
+                    <Mail className="h-4 w-4 text-primary shrink-0" />
+                    {contact.email}
+                  </a>
+                </li>
+              )}
+              {contact?.phone && (
+                <li>
+                  <a
+                    href={`tel:${toTelHref(contact.phone)}`}
+                    className="flex items-center gap-2 text-background/60 hover:text-primary text-sm font-body transition-colors"
+                  >
+                    <Phone className="h-4 w-4 text-primary shrink-0" />
+                    {formatPhoneNumber(contact.phone)}
+                  </a>
+                </li>
+              )}
+              {contact?.address && (
+                <li className="flex items-start gap-2 text-background/60 text-sm font-body">
+                  <MapPin className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  {contact.address}
+                </li>
+              )}
             </ul>
             <h4 className="font-display text-sm font-semibold uppercase tracking-wider mb-3">Social Media</h4>
             <div className="flex gap-2">
-              {SOCIAL_LINKS.map(({ icon: Icon, label, href }) => (
-                <a
-                  key={label}
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={label}
-                  className="w-9 h-9 rounded-full bg-background/10 flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors"
-                >
-                  <Icon className="h-4 w-4" />
-                </a>
-              ))}
+              {contact?.social_media && (
+                <>
+                  {Object.entries(contact.social_media).map(([key, href]) => {
+                    if (!href) return null;
+                    const iconUrl = contact?.social_media_icons?.[key];
+                    return (
+                      <a
+                        key={key}
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={key}
+                        className="w-9 h-9 rounded-full bg-background/10 flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors overflow-hidden"
+                      >
+                        {iconUrl ? (
+                          <img src={iconUrl} alt={`${key} icon`} className="w-full h-full object-cover" />
+                        ) : (
+                          // Fallback to lucide icons
+                          (() => {
+                            switch (key.toLowerCase()) {
+                              case "facebook":
+                                return <Facebook className="h-4 w-4" />;
+                              case "instagram":
+                                return <Instagram className="h-4 w-4" />;
+                              case "telegram":
+                                return <Twitter className="h-4 w-4" />;
+                              default:
+                                return <Linkedin className="h-4 w-4" />;
+                            }
+                          })()
+                        )}
+                      </a>
+                    );
+                  })}
+                </>
+              )}
             </div>
           </div>
         </div>

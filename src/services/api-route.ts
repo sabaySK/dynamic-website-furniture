@@ -27,5 +27,6 @@ export const showroomRoutes = {
 } as const;
 
 export const contactRoutes = {
-  get: "/admin/contact",
+  get: "/websites/contact",
+  post: "/websites/contact-messages",
 } as const;
