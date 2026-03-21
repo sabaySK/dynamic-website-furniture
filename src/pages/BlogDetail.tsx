@@ -1,12 +1,74 @@
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Calendar, Clock, User, ArrowLeft, Tag } from "lucide-react";
-import { blogPosts } from "@/data/products";
+import { Calendar, Clock, User, ArrowLeft, Tag, ArrowRight } from "lucide-react";
+import { formatDate } from "@/lib/date-time";
+import postService, { PostItem } from "@/services/post/post.service";
 
 const BlogDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const post = blogPosts.find((p) => p.id === id);
-  const otherPosts = blogPosts.filter((p) => p.id !== id);
+  const [post, setPost] = useState<any | null>(null);
+  const [otherPosts, setOtherPosts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setLoading(true);
+      try {
+        if (id) {
+          const p = await postService.fetchPostById(id);
+          if (mounted) {
+            // map normalized post to UI shape
+            const contentStr = p.content ?? "";
+            const contentArr = typeof contentStr === "string" ? contentStr.split(/\n\s*\n/) : (Array.isArray(p.content) ? p.content : []);
+            const tags = Array.isArray(p.tag) ? p.tag : (p.tag ? [p.tag as string] : []);
+            const mapped = {
+              id: p.id,
+              title: p.title,
+              image: p.featured_image,
+              slug: p.slug ?? "",
+              category: tags[0] ?? "",
+              author: p.author,
+              authorRole: p.author_role,
+              date: p.created_at,
+              readTime: p.readTime ?? 0,
+              excerpt: p.subtitle ?? (typeof p.content === "string" ? String(p.content).slice(0, 160) : ""),
+              content: contentArr,
+              tags,
+            };
+            setPost(mapped);
+
+            // NOTE: do not explicitly mark as read here to avoid double-counting
+          }
+        }
+
+        const list = await postService.fetchPosts();
+        if (mounted) {
+          const others = list.list
+            .map((p) => ({
+              id: p.id,
+              title: p.title,
+              image: p.featured_image,
+              category: p.slug ?? (Array.isArray(p.tag) ? (p.tag[0] ?? "") : (typeof p.tag === "string" ? p.tag : "")),
+              excerpt: p.subtitle ?? (typeof p.content === "string" ? String(p.content).slice(0, 120) : ""),
+              author: p.author ?? "",
+              date: p.created_at ?? "",
+              readTime: p.readTime ?? 0,
+            }))
+            .filter((p) => String(p.id) !== String(id));
+          setOtherPosts(others);
+        }
+      } catch (err) {
+        console.error("Failed to load post:", err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [id]);
 
   if (!post) {
     return (
@@ -47,7 +109,7 @@ const BlogDetail = () => {
         <div className="absolute bottom-0 left-0 right-0 container mx-auto px-4 lg:px-8 pb-10">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <span className="inline-block bg-primary/90 text-primary-foreground text-xs font-body font-medium px-3 py-1 rounded-full mb-3">
-              {post.category}
+              {post.slug ?? post.category}
             </span>
             <h1 className="font-display text-3xl md:text-5xl font-semibold text-foreground max-w-3xl leading-tight">
               {post.title}
@@ -74,15 +136,11 @@ const BlogDetail = () => {
             </span>
             <span className="flex items-center gap-1.5">
               <Calendar className="h-4 w-4 text-primary" />
-              {new Date(post.date).toLocaleDateString("en-US", {
-                month: "long",
-                day: "numeric",
-                year: "numeric",
-              })}
+              {formatDate(post.date)}
             </span>
             <span className="flex items-center gap-1.5">
               <Clock className="h-4 w-4 text-primary" />
-              {post.readTime} read
+              {post.readTime ?? 0} read
             </span>
           </motion.div>
 
@@ -137,15 +195,22 @@ const BlogDetail = () => {
             <h2 className="font-display text-2xl font-semibold mb-8">More from the Journal</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {otherPosts.map((related, i) => (
-                <motion.div
+                <motion.article
                   key={related.id}
                   initial={{ opacity: 0, y: 16 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1 }}
                 >
-                  <Link to={`/blog/${related.id}`} className="group block">
-                    <div className="aspect-[16/9] overflow-hidden rounded-xl mb-4">
+                  <Link
+                    to={`/blog/${related.id}`}
+                    className="group block cursor-pointer"
+                    onClick={() => {
+                      // mark related post as read when user navigates to it
+                      postService.markPostAsRead(related.id).catch(() => {});
+                    }}
+                  >
+                    <div className="aspect-[4/3] overflow-hidden rounded-xl mb-5">
                       <img
                         src={related.image}
                         alt={related.title}
@@ -153,13 +218,42 @@ const BlogDetail = () => {
                         loading="lazy"
                       />
                     </div>
-                    <span className="text-xs font-body text-primary font-medium">{related.category}</span>
-                    <h3 className="font-display text-lg font-semibold mt-1 group-hover:text-primary transition-colors leading-snug">
+
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground font-body mb-3">
+                      <span className="bg-primary/10 text-primary px-2.5 py-1 rounded-full font-medium">
+                        {related.category}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {related.readTime ?? 0}
+                      </span>
+                    </div>
+
+                    <h2 className="font-display text-xl font-semibold mb-2 group-hover:text-primary transition-colors">
                       {related.title}
-                    </h3>
-                    <p className="text-sm font-body text-muted-foreground mt-1 line-clamp-2">{related.excerpt}</p>
+                    </h2>
+
+                    <p className="text-muted-foreground font-body text-sm leading-relaxed mb-4 line-clamp-2">
+                      {related.excerpt}
+                    </p>
+
+                    <div className="flex items-center justify-between text-xs text-muted-foreground font-body">
+                      <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1">
+                          <User className="h-3 w-3" />
+                          {related.author ?? ""}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {related.date ? formatDate(related.date) : ""}
+                        </span>
+                      </div>
+                      <span className="flex items-center gap-1 text-primary font-medium group-hover:gap-2 transition-all">
+                        Read <ArrowRight className="h-3 w-3" />
+                      </span>
+                    </div>
                   </Link>
-                </motion.div>
+                </motion.article>
               ))}
             </div>
           </div>

@@ -29,6 +29,11 @@ export const contactRoutes = {
   post: "/websites/contact-messages",
 } as const;
 
+export const postRoutes = {
+  get: "/websites/posts",
+  read: "/websites/posts/{post}/read"
+} as const;
+
 export const showroomRoutes = {
   get: "/websites/showrooms",
 } as const;
