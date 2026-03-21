@@ -24,6 +24,14 @@ export const authRoutes = {
   profile: "/websites/profile",
 } as const;
 
+export const bannerRoutes = {
+  home: "/websites/banners/home",
+  about: "/websites/banners/about",
+  blog: "/websites/banners/blog",
+  contact: "/websites/banners/contact",
+  shop: "/websites/banners/shop",
+} as const;
+
 export const contactRoutes = {
   get: "/websites/contact",
   post: "/websites/contact-messages",

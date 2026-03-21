@@ -8,6 +8,7 @@ import { materials, colors } from "@/data/products";
 import ProductCard from "@/components/ProductCard";
 import shopBanner from "@/assets/shop-banner.jpg";
 import { getOverride } from "@/lib/overrides";
+import { fetchShopBanners } from "@/services/banner/banner-shop.service";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -125,6 +126,24 @@ const Shop = () => {
     });
   };
 
+  // Banner state (shop)
+  const [shopBannerData, setShopBannerData] = useState<any | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetchShopBanners();
+        const first = res?.list && res.list.length > 0 ? res.list[0] : null;
+        if (mounted) setShopBannerData(first);
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const toggleMaterial = (m: Material) => {
     const current = materialsParam ?? [];
     const next = current.includes(m)
@@ -175,7 +194,7 @@ const Shop = () => {
       {/* Banner Header */}
       <section className="relative h-[45vh] md:h-[55vh] overflow-hidden">
         <img
-          src={getOverride("shop.banner.image", shopBanner)}
+          src={shopBannerData?.image ?? getOverride("shop.banner.image", shopBanner)}
           alt="Nord Furniture collection showroom"
           className="w-full h-full object-cover"
         />
@@ -187,16 +206,17 @@ const Shop = () => {
             className="text-center"
           >
             <p className="text-primary font-body text-sm uppercase tracking-[0.15em] mb-2">
-              {getOverride("shop.banner.preTitle", "Browse Our Collection")}
+              {shopBannerData?.subtitle ?? getOverride("shop.banner.preTitle", "Browse Our Collection")}
             </p>
             <h1 className="font-display text-4xl md:text-5xl font-semibold">
-              {getOverride("shop.banner.title", "The Shop")}
+              {shopBannerData?.title ?? getOverride("shop.banner.title", "The Shop")}
             </h1>
             <p className="text-muted-foreground font-body text-sm max-w-md mx-auto mt-4">
-              {getOverride(
-                "shop.banner.subtitle",
-                "Every piece is handcrafted from sustainably sourced materials with a 5-year warranty."
-              )}
+              {shopBannerData?.description ??
+                getOverride(
+                  "shop.banner.subtitle",
+                  "Every piece is handcrafted from sustainably sourced materials with a 5-year warranty."
+                )}
             </p>
           </motion.div>
         </div>

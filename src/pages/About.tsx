@@ -9,6 +9,7 @@ import productChair from "@/assets/product-chair.jpg";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getOverride } from "@/lib/overrides";
 import aboutService, { AboutItem } from "@/services/about/about.service";
+import { fetchAboutBanners } from "@/services/banner/banner-about.service";
 
 const workshopPhotosDefault = [
   { src: aboutImage, alt: "Our workshop in Stockholm" },
@@ -76,6 +77,23 @@ const About = () => {
       mounted = false;
     };
   }, []);
+  // fetch about page hero banner separately
+  const [aboutBanner, setAboutBanner] = useState<any | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetchAboutBanners();
+        const first = res?.list && res.list.length > 0 ? res.list[0] : null;
+        if (mounted) setAboutBanner(first);
+      } catch (err) {
+        // ignore
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
   // Prefer API-provided workshop images when available, then admin overrides, then defaults.
   let workshopPhotos = workshopPhotosDefault;
 
@@ -111,7 +129,7 @@ const About = () => {
       {/* Hero */}
       <section className="relative h-[50vh] min-h-[400px] flex items-center overflow-hidden">
         <img
-          src={about?.image ?? getOverride("about.banner.image", aboutImage)}
+          src={aboutBanner?.image ?? getOverride("about.banner.image", aboutImage)}
           alt="NØRD workshop"
           className="absolute inset-0 w-full h-full object-cover"
         />
@@ -122,10 +140,10 @@ const About = () => {
             animate={{ opacity: 1, y: 0 }}
           >
             <p className="text-primary-foreground/70 font-body text-sm uppercase tracking-[0.2em] mb-3">
-              {about?.title ?? getOverride("about.banner.preTitle", "Our Story")}
+              {aboutBanner?.subtitle ?? getOverride("about.banner.preTitle", "Our Story")}
             </p>
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-primary-foreground">
-              {about?.content ?? getOverride("about.banner.title", "Made with Purpose")}
+              {aboutBanner?.title ?? getOverride("about.banner.title", "Made with Purpose")}
             </h1>
           </motion.div>
         </div>
@@ -136,9 +154,9 @@ const About = () => {
         <div className="container mx-auto px-4 lg:px-8">
           <div className="text-center mb-12">
             <p className="text-primary font-body text-sm uppercase tracking-[0.15em] mb-2">
-              About Us
+              {about?.title ?? "About Us"}
             </p>
-            <h2 className="font-display text-3xl md:text-4xl font-semibold">Company Story</h2>
+            <h2 className="font-display text-3xl md:text-4xl font-semibold">{about?.story_title ?? "Company Story"}</h2>
           </div>
           <div className="max-w-3xl mx-auto text-center">
             <motion.div
@@ -147,7 +165,7 @@ const About = () => {
               viewport={{ once: true }}
             >
               <h3 className="font-display text-2xl font-semibold mb-6">
-                {about?.story_title ?? "Born in Stockholm. Designed for the World."}
+                {about?.content ?? "Born in Stockholm. Designed for the World."}
               </h3>
               <p className="text-muted-foreground font-body text-lg leading-relaxed mb-6 whitespace-pre-line">
                 {about?.story ?? getOverride("about.story.content", "NØRD was founded in 2018 with a simple belief: furniture should be honest. Honest materials, honest craftsmanship, honest design. We work directly with skilled artisans across Scandinavia to create pieces that are both beautiful and built to last generations.")}

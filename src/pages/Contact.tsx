@@ -8,6 +8,7 @@ import { getOverride } from "@/lib/overrides";
 import contactService, { ContactItem as ServiceContactItem } from "@/services/contact/contact.service";
 import contactMessageService from "@/services/contact/contact-message.service";
 import { formatPhoneNumber, toTelHref } from "@/lib/phone-number";
+import { fetchContactBanners } from "@/services/banner/banner-contact.service";
 const MAP_EMBED_URL =
   "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2032.787729387499!2d18.0686!3d59.3293!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x465f9d679c74d4a%3A0x9e0ef4c9a5a5a5a5!2sBirger%20Jarlsgatan%2C%20Stockholm%2C%20Sweden!5e0!3m2!1sen!2sse!4v1709769600000";
 
@@ -35,6 +36,23 @@ const Contact = () => {
       }
     };
     load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const [contactBannerData, setContactBannerData] = useState<any | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetchContactBanners();
+        const first = res?.list && res.list.length > 0 ? res.list[0] : null;
+        if (mounted) setContactBannerData(first);
+      } catch {
+        // ignore
+      }
+    })();
     return () => {
       mounted = false;
     };
@@ -81,7 +99,7 @@ const Contact = () => {
       {/* Banner Header */}
       <section className="relative h-[45vh] md:h-[55vh] overflow-hidden">
         <img
-          src={getOverride("contact.banner.image", contactBanner)}
+          src={contactBannerData?.image ?? getOverride("contact.banner.image", contactBanner)}
           alt="Nord Furniture showroom"
           className="w-full h-full object-cover"
         />
@@ -93,10 +111,10 @@ const Contact = () => {
             className="text-center"
           >
             <p className="text-primary font-body text-sm uppercase tracking-[0.15em] mb-2">
-              {getOverride("contact.banner.preTitle", "We'd Love to Hear From You")}
+              {contactBannerData?.title ?? getOverride("contact.banner.preTitle", "We'd Love to Hear From You")}
             </p>
             <h1 className="font-display text-4xl md:text-5xl font-semibold">
-              {getOverride("contact.banner.title", "Contact Us")}
+              {contactBannerData?.subtitle ?? getOverride("contact.banner.title", "Contact Us")}
             </h1>
           </motion.div>
         </div>

@@ -5,6 +5,7 @@ import { Calendar, Clock, User, ArrowRight } from "lucide-react";
 import { formatDate } from "@/lib/date-time";
 import { getOverride } from "@/lib/overrides";
 import postService, { PostItem } from "@/services/post/post.service";
+import { fetchBlogBanners } from "@/services/banner/banner-blog.service";
 
 const Blog = () => {
   const [posts, setPosts] = useState<PostItem[]>([]);
@@ -28,12 +29,29 @@ const Blog = () => {
     };
   }, []);
 
+  const [blogBanner, setBlogBanner] = useState<any | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetchBlogBanners();
+        const first = res?.list && res.list.length > 0 ? res.list[0] : null;
+        if (mounted) setBlogBanner(first);
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   return (
     <div className="min-h-screen">
       {/* Hero */}
       <section className="relative h-[50vh] min-h-[400px] flex items-center overflow-hidden">
         <img
-          src={getOverride("blog.banner.image", "https://images.unsplash.com/photo-1540518614846-7eded433c457?q=80&w=2070&auto=format&fit=crop")}
+          src={blogBanner?.image ?? getOverride("blog.banner.image", "https://images.unsplash.com/photo-1540518614846-7eded433c457?q=80&w=2070&auto=format&fit=crop")}
           alt="The Journal"
           className="absolute inset-0 w-full h-full object-cover"
         />
@@ -44,10 +62,10 @@ const Blog = () => {
             animate={{ opacity: 1, y: 0 }}
           >
             <p className="text-primary-foreground/60 font-body text-xs md:text-sm uppercase tracking-[0.4em] mb-4">
-              {getOverride("blog.banner.preTitle", "Stories & Inspiration")}
+              {blogBanner?.title ?? getOverride("blog.banner.preTitle", "Stories & Inspiration")}
             </p>
             <h1 className="font-display text-5xl md:text-7xl lg:text-8xl font-bold text-primary-foreground leading-tight">
-              {getOverride("blog.banner.title", "The Journal")}
+              {blogBanner?.subTitle ?? getOverride("blog.banner.title", "The Journal")}
             </h1>
             <div className="w-20 h-1 bg-primary mx-auto mt-8 opacity-60" />
 
