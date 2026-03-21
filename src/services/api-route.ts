@@ -13,20 +13,22 @@
  * ```
  */
 
-/**
- * Authentication endpoints
- */
-export const authRoutes = {
-  login: "/api/websites/login",
-  register: "/api/websites/register",
-  profile: "/api/websites/profile",
+
+export const aboutRoutes = {
+  get: "/websites/about",
 } as const;
 
-export const showroomRoutes = {
-  get: "/websites/showrooms",
+export const authRoutes = {
+  login: "/websites/login",
+  register: "/websites/register",
+  profile: "/websites/profile",
 } as const;
 
 export const contactRoutes = {
   get: "/websites/contact",
   post: "/websites/contact-messages",
+} as const;
+
+export const showroomRoutes = {
+  get: "/websites/showrooms",
 } as const;
