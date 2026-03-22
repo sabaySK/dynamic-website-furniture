@@ -24,6 +24,7 @@ export const authRoutes = {
   profile: "/websites/profile",
   logout: "/websites/logout",
   updateProfile: "/websites/profile",
+  updatePassword: "/websites/change-password",
 } as const;
 
 export const bannerRoutes = {

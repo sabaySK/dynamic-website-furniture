@@ -26,6 +26,7 @@ import ProductCard from "@/components/ProductCard";
 import RequireAuth from "@/components/auth/RequireAuth";
 import ConfirmDialog from "@/components/dialog/ConfirmDialog";
 import { logout } from "@/services/authentication/logout.service";
+import { changePassword } from "@/services/authentication/change-password.service";
 import UploadImage from "@/components/UploadImage";
 
 const STORAGE_PROFILE = "account_profile";
@@ -125,6 +126,7 @@ const Account = () => {
   const [addresses, setAddresses] = useState<SavedAddress[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [passwordForm, setPasswordForm] = useState({ current: "", new: "", confirm: "" });
+  const [passwordSubmitting, setPasswordSubmitting] = useState(false);
   const [otpEmail, setOtpEmail] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -323,17 +325,39 @@ const Account = () => {
     toast.success("Address removed");
   };
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
+    if (!passwordForm.current.trim()) {
+      toast.error("Enter your current password");
+      return;
+    }
     if (passwordForm.new !== passwordForm.confirm) {
-      toast.error("Passwords do not match");
+      toast.error("New passwords do not match");
       return;
     }
-    if (passwordForm.new.length < 6) {
-      toast.error("Password must be at least 6 characters");
+    if (passwordForm.new.length < 8) {
+      toast.error("New password must be at least 8 characters");
       return;
     }
-    toast.success("Password updated successfully");
-    setPasswordForm({ current: "", new: "", confirm: "" });
+    if (!isAuthenticated()) {
+      toast.error("You must be signed in to change your password");
+      return;
+    }
+    setPasswordSubmitting(true);
+    try {
+      const res = (await changePassword({
+        current_password: passwordForm.current,
+        password: passwordForm.new,
+        password_confirmation: passwordForm.confirm,
+      })) as { message?: string };
+      const msg = typeof res?.message === "string" ? res.message.trim() : "";
+      toast.success(msg || "Password updated successfully");
+      setPasswordForm({ current: "", new: "", confirm: "" });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Could not update password";
+      toast.error(msg);
+    } finally {
+      setPasswordSubmitting(false);
+    }
   };
 
   const handleForgotPassword = () => {
@@ -691,8 +715,13 @@ const Account = () => {
                         className="w-full"
                       />
                     </div>
-                    <Button onClick={handleChangePassword} className="w-full">
-                      Update Password
+                    <Button
+                      type="button"
+                      onClick={() => void handleChangePassword()}
+                      className="w-full"
+                      disabled={passwordSubmitting}
+                    >
+                      {passwordSubmitting ? "Updating…" : "Update Password"}
                     </Button>
                   </div>
                 </div>
