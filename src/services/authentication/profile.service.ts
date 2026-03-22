@@ -66,21 +66,40 @@ export async function fetchProfile(config?: RequestConfig): Promise<ProfilePaylo
   return { message, user };
 }
 
+/** JSON body for profile update — only these four fields. */
+export type ProfileUpdatePayload = Pick<ProfileUser, "name" | "email" | "phone" | "image">;
+
+/** When `imageFile` is set, only multipart fields are sent (no JSON `image` URL). */
+export type ProfileUpdateRequest = Omit<ProfileUpdatePayload, "image"> & {
+  image?: string | null;
+  imageFile?: File | null;
+};
+
 /**
- * Update profile on the server.
- * Accepts a partial ProfileUser payload (name, email, phone, image, etc).
+ * Update profile on the server (PUT /websites/profile).
+ * Sends only: name, email, phone, image (URL string in JSON, or file in multipart).
  */
-export async function updateProfile(payload: Partial<ProfileUser>, config?: RequestConfig): Promise<ProfilePayload> {
-  const res = await apiClient.put<any>(authRoutes.profile, payload, { ...(config ?? {}) });
-  const data = res && typeof res === "object" && "data" in res ? res.data : res;
+export async function updateProfile(payload: ProfileUpdateRequest, config?: RequestConfig): Promise<ProfilePayload> {
+  if (payload.imageFile instanceof File) {
+    const fd = new FormData();
+    fd.append("name", payload.name);
+    fd.append("email", payload.email);
+    fd.append("phone", payload.phone ?? "");
+    fd.append("image", payload.imageFile);
+    const res = await apiClient.post<any>(authRoutes.updateProfile, fd, { ...(config ?? {}) });
+    const { message, user } = extractUserFromProfileResponse(res);
+    return { message, user };
+  }
 
-  const rawUser = data?.user ?? data ?? null;
-  const user: ProfileUser | null = rawUser ? (rawUser as ProfileUser) : null;
-
-  return {
-    message: data?.message ?? "",
-    user,
+  const body: ProfileUpdatePayload = {
+    name: payload.name,
+    email: payload.email,
+    phone: payload.phone ?? null,
+    image: payload.image ?? null,
   };
+  const res = await apiClient.put<any>(authRoutes.updateProfile, body, { ...(config ?? {}) });
+  const { message, user } = extractUserFromProfileResponse(res);
+  return { message, user };
 }
 
 export default {

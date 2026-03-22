@@ -22,6 +22,8 @@ export const authRoutes = {
   login: "/websites/login",
   register: "/websites/register",
   profile: "/websites/profile",
+  logout: "/websites/logout",
+  updateProfile: "/websites/profile",
 } as const;
 
 export const bannerRoutes = {

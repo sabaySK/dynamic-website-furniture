@@ -1,53 +1,31 @@
 import { authRoutes } from "@/services/api-route";
 import { removeAuthTokens } from "@/services/api-config";
+import { apiClient } from "@/services/api-client";
+import type { RequestConfig } from "@/services/api-type";
 
-export async function logout() {
-  // DEMO MODE: Simulate successful logout
-  console.log("DEMO MODE: Simulating logout");
-  
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // Clear tokens
-      removeAuthTokens();
-      localStorage.removeItem("current_user");
-      
-      console.log("DEMO MODE: Logout success");
-      resolve({
-        success: true,
-        message: "Logged out successfully (Demo Mode)"
-      });
-    }, 500);
-  });
+function clearClientSession(): void {
+  removeAuthTokens();
+  localStorage.removeItem("current_user");
+}
 
-  /* Original implementation commented out for Demo
+/**
+ * Calls POST /websites/logout with auth headers, then always clears local session.
+ * Uses suppress401Redirect so a stale token does not trigger a global redirect loop.
+ */
+export async function logout(config?: RequestConfig) {
   try {
-    const res = await fetch(authRoutes.logout, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
-      credentials: "include",
+    await apiClient.post<unknown>(authRoutes.logout, {}, {
+      suppress401Redirect: true,
+      ...(config ?? {}),
     });
-
-    // Even if the server request fails, we should clear client-side tokens
-    removeAuthTokens();
-    localStorage.removeItem("current_user");
-
-    if (!res.ok) {
-      console.warn("Logout request returned non-ok status:", res.status);
-    }
-
-    return {
-      success: true,
-      message: "Successfully logged out",
-    };
   } catch (err) {
-    console.error("Logout request failed", err);
-    // Still clear tokens on error
-    removeAuthTokens();
-    localStorage.removeItem("current_user");
-    throw err;
+    console.warn("Logout request failed; clearing client session anyway", err);
+  } finally {
+    clearClientSession();
   }
-  */
+
+  return {
+    success: true,
+    message: "Successfully logged out",
+  };
 }
