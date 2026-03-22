@@ -15,12 +15,14 @@ import {
 import { useWishlist } from "@/context/WishlistContext";
 import { getProducts } from "@/lib/catalog";
 import { fetchProfile } from "@/services/authentication/profile.service";
+import { isAuthenticated } from "@/services/api-config";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import ProductCard from "@/components/ProductCard";
+import RequireAuth from "@/components/auth/RequireAuth";
 
 const STORAGE_PROFILE = "account_profile";
 const STORAGE_ADDRESSES = "account_addresses";
@@ -33,6 +35,7 @@ interface Profile {
   email: string;
   phone: string;
   address?: string;
+  image?: string | null;
 }
 
 const STATIC_PROFILE: Profile = {
@@ -148,18 +151,21 @@ const Account = () => {
       setOrders(STATIC_ORDERS);
     }
 
-    // fetch profile from API if available
+    // fetch profile from API only when client appears authenticated
     (async function loadProfile() {
+      if (!isAuthenticated()) {
+        // not logged in on client — skip protected API call and do not show error
+        return;
+      }
       try {
-        const res = await fetchProfile();
-        console.log("Profile API response:", res);
+        const res = await fetchProfile({ suppress401Redirect: true });
         const user = res?.user;
         if (user) {
           const serverProfile: Profile = {
             name: user.name ?? "",
             email: user.email ?? "",
             phone: user.phone ?? "",
-            address: user.address ?? "",
+            image: user.image ?? null,
           };
           setProfile(serverProfile);
           try {
@@ -167,10 +173,12 @@ const Account = () => {
           } catch {}
         } else {
           // API returned no user object
-          toast.error("Could not load profile from server");
+          // Do not show toast here — RequireAuth already handles unauthenticated UX
+          console.warn("Profile API returned no user");
         }
       } catch (err) {
         console.error("Error fetching profile:", err);
+        // Only show an error toast if the client had a token (i.e. we expected success)
         toast.error("Could not load profile from server");
       }
     })();
@@ -225,8 +233,9 @@ const Account = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col w-full">
-      <div className="flex-1 w-full px-4 py-8 lg:py-12 lg:px-8">
+    <RequireAuth>
+      <div className="min-h-screen flex flex-col w-full">
+        <div className="flex-1 w-full px-4 py-8 lg:py-12 lg:px-8">
         <div className="w-full max-w-7xl mx-auto">
           <h1 className="font-display text-3xl font-semibold mb-8">My Account</h1>
 
@@ -259,7 +268,12 @@ const Account = () => {
               <div className="space-y-8 w-full">
                 {/* Profile header with avatar */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-6 pb-6 border-b border-border">
-                  <Avatar className="h-20 w-20 rounded-full border-2 border-primary/20 bg-primary/10">
+                <Avatar className="h-20 w-20 rounded-full border-2 border-primary/20 bg-primary/10 overflow-hidden">
+                  {profile.image ? (
+                    // show image when available
+                    // eslint-disable-next-line jsx-a11y/img-redundant-alt
+                    <img src={profile.image} alt={`${profile.name} avatar`} className="w-full h-full object-cover" />
+                  ) : (
                     <AvatarFallback className="text-xl font-display font-semibold text-primary">
                       {profile.name
                         ? profile.name
@@ -270,7 +284,8 @@ const Account = () => {
                             .toUpperCase()
                         : "U"}
                     </AvatarFallback>
-                  </Avatar>
+                  )}
+                </Avatar>
                   <div className="flex-1 min-w-0">
                     <h2 className="font-display text-2xl font-semibold tracking-tight">
                       {profile.name || "Profile"}
@@ -577,6 +592,7 @@ const Account = () => {
         </div>
       </div>
     </div>
+    </RequireAuth>
   );
 };
 

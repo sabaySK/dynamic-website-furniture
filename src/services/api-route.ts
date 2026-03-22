@@ -26,7 +26,7 @@ export const authRoutes = {
 
 export const bannerRoutes = {
   home: "/websites/banners/home",
-  about: "/websites/banners/about",
+  about: "/websites/banners/about_us",
   blog: "/websites/banners/blog",
   contact: "/websites/banners/contact",
   shop: "/websites/banners/shop",

@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { login } from "@/services/authentication/login.service";
+import { extractAccessTokenFromLoginResponse, setAccessToken } from "@/services/api-config";
 
 export default function Login() {
   const [phone, setPhone] = useState("");
@@ -17,9 +18,32 @@ export default function Login() {
     setLoading(true);
     try {
       const data = await login({ phone, password, platform: "web" });
-      // store simple session marker — backend should return user info or token
-      const user = data?.user ?? { phone };
+      const resp = data as any;
+      const serverUser =
+        resp?.user ??
+        resp?.data?.user ??
+        (resp?.data && typeof resp.data === "object" && ("id" in resp.data || "email" in resp.data || "phone" in resp.data)
+          ? resp.data
+          : null);
+      const user = serverUser ?? { phone };
       localStorage.setItem("current_user", JSON.stringify(user));
+      const token = extractAccessTokenFromLoginResponse(resp);
+      if (!token) {
+        toast.error("Logged in but no access token was found in the response.");
+        setLoading(false);
+        return;
+      }
+      const rawExpiresIn = resp?.data?.expires_in ?? resp?.expires_in;
+      const rawExpiresAt = resp?.data?.expires_at ?? resp?.expires_at;
+      let expiredAt: number | undefined;
+      if (typeof rawExpiresIn === "number" && rawExpiresIn > 0) {
+        expiredAt = Math.floor(Date.now() / 1000) + rawExpiresIn;
+      } else if (typeof rawExpiresAt === "number" && rawExpiresAt > 1e12) {
+        expiredAt = Math.floor(rawExpiresAt / 1000);
+      } else if (typeof rawExpiresAt === "number") {
+        expiredAt = rawExpiresAt;
+      }
+      setAccessToken(token, expiredAt);
       toast.success("Logged in");
       navigate("/account");
     } catch (err: any) {

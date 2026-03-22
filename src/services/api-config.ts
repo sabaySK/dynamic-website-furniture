@@ -78,18 +78,20 @@ export const getAuthHeaders = (): Record<string, string> => {
   const accessToken = getAccessToken();
   const authorizationToken = getAuthorizationToken();
   const headers: Record<string, string> = { ...DEFAULT_HEADERS };
-  
-  // Auth header: Access token from user login
+
+  // Auth header: custom header some backends use for website login tokens
   if (accessToken) {
     headers.Auth = accessToken;
   }
-  
-  // Authorization header: Authorization token from /api/authorize
-  // API expects just the token, not "Bearer {token}"
+
+  // Authorization: separate long-lived token from /api/authorize when present
   if (authorizationToken) {
     headers.Authorization = authorizationToken;
+  } else if (accessToken) {
+    // Laravel Sanctum / Passport and many APIs expect Bearer on Authorization for session tokens
+    headers.Authorization = `Bearer ${accessToken}`;
   }
-  
+
   return headers;
 };
 
@@ -108,7 +110,38 @@ export const setAuthorizationToken = (token: string, expiredAt?: number): void =
     localStorage.removeItem("authorization_token");
     localStorage.removeItem("authorization_token_expired_at");
   }
+  // Notify listeners that auth changed
+  try {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("auth-changed"));
+    }
+  } catch {}
 };
+
+/**
+ * Find an access token in common login response shapes (including nested `data` / `user`).
+ */
+export function extractAccessTokenFromLoginResponse(resp: unknown): string | undefined {
+  const keys = ["access_token", "accessToken", "token", "api_token", "apiToken"] as const;
+  const visit = (obj: unknown, depth: number): string | undefined => {
+    if (!obj || typeof obj !== "object" || depth > 8) return undefined;
+    const o = obj as Record<string, unknown>;
+    for (const k of keys) {
+      const v = o[k];
+      if (typeof v === "string" && v.length > 0) return v;
+    }
+    if (o.data) {
+      const t = visit(o.data, depth + 1);
+      if (t) return t;
+    }
+    if (o.user) {
+      const t = visit(o.user, depth + 1);
+      if (t) return t;
+    }
+    return undefined;
+  };
+  return visit(resp, 0);
+}
 
 /**
  * Save access token to storage (from login)
@@ -125,6 +158,12 @@ export const setAccessToken = (token: string, expiredAt?: number): void => {
     localStorage.removeItem("access_token");
     localStorage.removeItem("access_token_expired_at");
   }
+  // Notify listeners that auth changed
+  try {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("auth-changed"));
+    }
+  } catch {}
 };
 
 /**
@@ -136,6 +175,11 @@ export const setAuthToken = (token: string): void => {
   } else {
     localStorage.removeItem("authToken");
   }
+  try {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("auth-changed"));
+    }
+  } catch {}
 };
 
 /**
@@ -161,8 +205,7 @@ export const getAccessTokenExpiredAt = (): number | null => {
 export const isAuthorizationTokenExpired = (): boolean => {
   const expiredAt = getAuthorizationTokenExpiredAt();
   if (!expiredAt) {
-    // No expiration stored, consider it expired for security
-    return true;
+    return false;
   }
   // expiredAt is in seconds, Date.now() is in milliseconds
   const now = Math.floor(Date.now() / 1000);
@@ -171,13 +214,12 @@ export const isAuthorizationTokenExpired = (): boolean => {
 
 /**
  * Check if access token is expired
- * @returns true if token is expired or missing, false if valid
+ * @returns true if we have a stored expiry time in the past; false if no expiry is stored (backend often omits it — validity is enforced by API 401) or expiry is in the future
  */
 export const isAccessTokenExpired = (): boolean => {
   const expiredAt = getAccessTokenExpiredAt();
   if (!expiredAt) {
-    // No expiration stored, consider it expired for security
-    return true;
+    return false;
   }
   // expiredAt is in seconds, Date.now() is in milliseconds
   const now = Math.floor(Date.now() / 1000);
@@ -191,11 +233,15 @@ export const isAccessTokenExpired = (): boolean => {
  */
 export const isAuthenticated = (): boolean => {
   const accessToken = getAccessToken();
-  if (!accessToken) {
-    return false;
+  if (accessToken) {
+    return !isAccessTokenExpired();
   }
-  // Check if token is expired
-  return !isAccessTokenExpired();
+  const authorizationToken = getAuthorizationToken();
+  if (authorizationToken) {
+    return !isAuthorizationTokenExpired();
+  }
+  const legacy = localStorage.getItem("authToken");
+  return Boolean(legacy);
 };
 
 /**
@@ -207,6 +253,11 @@ export const removeAuthTokens = (): void => {
   localStorage.removeItem("access_token");
   localStorage.removeItem("access_token_expired_at");
   localStorage.removeItem("authToken");
+  try {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("auth-changed"));
+    }
+  } catch {}
 };
 
 /**
