@@ -1,7 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login } from '@/services/authentication/login.service';
-import { setAccessToken } from '@/services/api-config';
+import { adminLogin } from "@/services/admin-service/authentication/login.service";
+import { extractAccessTokenFromLoginResponse, removeAuthTokens, setAccessToken } from '@/services/api-config';
 import { toast } from 'sonner';
 import { 
   Card, 
@@ -28,19 +28,32 @@ export default function AdminLogin() {
     setIsLoading(true);
 
     try {
-      const response: any = await login({ email, password });
-      
-      if (response && response.success) {
-        toast.success(response.message || 'Login successful');
-        // Store the token
-        if (response.data?.access_token) {
-          setAccessToken(response.data.access_token);
-        }
-        // Redirect to dashboard
-        navigate('/admin/index');
-      } else {
-        toast.error(response?.message || 'Login failed');
+      const response: any = await adminLogin({ email, password });
+      const serverUser =
+        response?.user ??
+        response?.data?.user ??
+        (response?.data &&
+        typeof response.data === "object" &&
+        ("id" in response.data || "email" in response.data || "phone" in response.data || "role" in response.data)
+          ? response.data
+          : null);
+      const role = typeof serverUser?.role === "string" ? serverUser.role.toLowerCase() : "";
+      const token = extractAccessTokenFromLoginResponse(response);
+      if (!token) {
+        toast.error("Login succeeded but access token is missing");
+        return;
       }
+      if (role !== "admin") {
+        removeAuthTokens();
+        localStorage.removeItem("current_user");
+        toast.error("Access denied. Admin account required.");
+        navigate("/", { replace: true });
+        return;
+      }
+      localStorage.setItem("current_user", JSON.stringify(serverUser ?? { email, role: "admin" }));
+      setAccessToken(token);
+      toast.success(response?.message || 'Login successful');
+      navigate('/admin/dashboard', { replace: true });
     } catch (error: any) {
       console.error('Login error:', error);
       toast.error(error.message || 'An unexpected error occurred');

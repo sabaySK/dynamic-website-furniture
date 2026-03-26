@@ -14,6 +14,21 @@
  */
 
 
+
+
+/** Admin Routes */
+
+export const adminAuthRoutes = {
+  login: "/admin/login",
+  logout: "/admin/logout",
+  profile: "/admin/profile",
+} as const;
+
+
+
+
+/** Website Routes */
+
 export const aboutRoutes = {
   get: "/websites/about",
 } as const;

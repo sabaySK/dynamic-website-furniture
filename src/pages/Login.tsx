@@ -44,6 +44,12 @@ export default function Login() {
         expiredAt = rawExpiresAt;
       }
       setAccessToken(token, expiredAt);
+      const role = typeof user?.role === "string" ? String(user.role).toLowerCase() : "";
+      if (role === "admin") {
+        toast.success("Welcome admin");
+        navigate("/admin/dashboard", { replace: true });
+        return;
+      }
       toast.success("Logged in");
       navigate("/account");
     } catch (err: any) {
