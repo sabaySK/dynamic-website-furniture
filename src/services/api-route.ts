@@ -24,6 +24,11 @@ export const adminAuthRoutes = {
   profile: "/admin/profile",
 } as const;
 
+export const customerRoute = {
+  get: "/admin/customers",
+  updateStatus: "/admin/customers/{customer}/status",
+} as const;
+
 
 
 
