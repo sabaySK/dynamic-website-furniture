@@ -38,23 +38,11 @@ const IndexAdmin = () => {
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  const pageItems = useMemo((): (number | "ellipsis")[] => {
-    if (totalPages <= 7) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1);
-    }
-    const set = new Set<number>();
-    set.add(1);
-    set.add(totalPages);
-    for (let p = page - 1; p <= page + 1; p++) {
-      if (p >= 1 && p <= totalPages) set.add(p);
-    }
-    const sorted = [...set].sort((a, b) => a - b);
-    const out: (number | "ellipsis")[] = [];
-    for (let i = 0; i < sorted.length; i++) {
-      if (i > 0 && sorted[i] - sorted[i - 1] > 1) out.push("ellipsis");
-      out.push(sorted[i]);
-    }
-    return out;
+  const pageItems = useMemo(() => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    if (page <= 3) return [1, 2, 3, 4, "dots-right", totalPages] as const;
+    if (page >= totalPages - 2) return [1, "dots-left", totalPages - 3, totalPages - 2, totalPages - 1, totalPages] as const;
+    return [1, "dots-left", page - 1, page, page + 1, "dots-right", totalPages] as const;
   }, [page, totalPages]);
 
   const loadCustomers = useCallback(async () => {
@@ -212,30 +200,25 @@ const IndexAdmin = () => {
                       </div>
 
           {!loadingCustomers && total > 0 ? (
-            <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between sm:items-center pt-2">
-              <p className="text-xs text-muted-foreground font-body order-2 sm:order-1">
+            <div className="flex flex-col gap-3 border-t border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
+              <p className="text-xs text-muted-foreground font-body">
                 Showing page {page} of {totalPages} ({total} customers)
               </p>
-              {totalPages > 1 ? (
-                <Pagination className="order-1 sm:order-2 mx-0 w-full sm:w-auto justify-center sm:justify-end">
+              <Pagination className="mx-0 w-auto justify-start md:justify-end">
                   <PaginationContent>
                     <PaginationItem>
                       <PaginationPrevious
                         href="#"
-                        className={page <= 1 ? "pointer-events-none opacity-50" : undefined}
+                        className={page <= 1 ? "pointer-events-none opacity-50" : ""}
                         onClick={(e) => {
                           e.preventDefault();
-                          if (page > 1) setPage((p) => p - 1);
+                          if (page > 1) setPage(page - 1);
                         }}
                       />
                     </PaginationItem>
                     {pageItems.map((item, idx) =>
-                      item === "ellipsis" ? (
-                        <PaginationItem key={`e-${idx}`}>
-                          <PaginationEllipsis />
-                        </PaginationItem>
-                      ) : (
-                        <PaginationItem key={item}>
+                      typeof item === "number" ? (
+                        <PaginationItem key={`page-${item}-${idx}`}>
                           <PaginationLink
                             href="#"
                             isActive={item === page}
@@ -247,21 +230,24 @@ const IndexAdmin = () => {
                             {item}
                           </PaginationLink>
                         </PaginationItem>
+                      ) : (
+                        <PaginationItem key={`dots-${idx}`}>
+                          <PaginationEllipsis />
+                        </PaginationItem>
                       )
                     )}
                     <PaginationItem>
                       <PaginationNext
                         href="#"
-                        className={page >= totalPages ? "pointer-events-none opacity-50" : undefined}
+                        className={page >= totalPages ? "pointer-events-none opacity-50" : ""}
                         onClick={(e) => {
                           e.preventDefault();
-                          if (page < totalPages) setPage((p) => p + 1);
+                          if (page < totalPages) setPage(page + 1);
                         }}
                       />
                     </PaginationItem>
                   </PaginationContent>
                 </Pagination>
-              ) : null}
             </div>
           ) : null}
         </div>
