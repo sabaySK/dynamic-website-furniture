@@ -118,27 +118,27 @@ const IndexAdmin = () => {
       <div className="bg-card border border-border rounded-lg shadow-sm w-full max-w-none">
         <div className="p-4 space-y-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-display font-semibold">Customers</h3>
+              <div>
+                <h3 className="text-sm font-display font-semibold">Customers</h3>
               <p className="text-xs text-muted-foreground font-body">
                 View and manage status of customers
               </p>
             </div>
-          </div>
+            </div>
 
-          <div className="border border-border rounded-lg overflow-hidden">
+            <div className="border border-border rounded-lg overflow-hidden">
             <Table className="table-fixed min-w-[1200px]">
-              <TableHeader>
-                <TableRow>
+                <TableHeader>
+                  <TableRow>
                   <TableHead className="w-[12%]">Image</TableHead>
                   <TableHead className="w-[22%]">Name</TableHead>
-                  <TableHead className="w-[20%]">Email</TableHead>
+                    <TableHead className="w-[20%]">Email</TableHead>
                   <TableHead className="w-[16%]">Phone</TableHead>
                   <TableHead className="w-[12%]">Status</TableHead>
                   <TableHead className="w-[18%]">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                 {loadingCustomers ? (
                   <TableRow>
                     <TableCell colSpan={6} className="p-0">
@@ -159,7 +159,7 @@ const IndexAdmin = () => {
                         title="No customers found"
                         description="There are no customers in this list, or you may not have permission to view them."
                       />
-                    </TableCell>
+                      </TableCell>
                   </TableRow>
                 ) : (
                   items.map((it) => (
@@ -201,15 +201,15 @@ const IndexAdmin = () => {
                           />
                           <span className="text-xs text-muted-foreground">
                             {updatingStatusId === it.id ? "Updating..." : it.status === "active" ? "On" : "Off"}
-                          </span>
+                        </span>
                         </div>
                       </TableCell>
                     </TableRow>
                   ))
                 )}
-              </TableBody>
-            </Table>
-          </div>
+                </TableBody>
+              </Table>
+                      </div>
 
           {!loadingCustomers && total > 0 ? (
             <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between sm:items-center pt-2">

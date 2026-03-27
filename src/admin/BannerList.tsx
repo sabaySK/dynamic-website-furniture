@@ -1,147 +1,291 @@
-import { useState, useEffect } from "react";
-import { setOverrides, getOverride } from "@/lib/overrides";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Plus, Edit, Trash2, Eye, Image as ImageIcon } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Edit, Eye, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import Loading from "@/components/ui/loading";
+import Empty from "@/components/ui/empty";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import UploadImage from "@/components/UploadImage";
+import ConfirmDialog from "@/components/dialog/ConfirmDialog";
+import {
+  createBanner,
+  deleteBanner,
+  fetchBannersPage,
+  updateBanner,
+  type BannerItem,
+  type BannerPosition,
+  type BannerStatus,
+} from "@/services/admin-service/banner/banner.service";
 
-interface Banner {
-  id: string;
-  name: string;
-  page: string;
-  image: string;
-  preTitle: string;
-  title: string;
-  subtitle?: string;
-}
-
-const emptyBanner: Banner = {
-  id: "",
-  name: "",
-  page: "Home",
-  image: "",
-  preTitle: "",
+const PAGE_SIZE = 10;
+const defaultNewBanner = {
   title: "",
   subtitle: "",
+  description: "",
+  image: "",
+  link: "",
+  position: "home" as BannerPosition,
+  status: "active" as BannerStatus,
+  sort_order: "1",
 };
 
 const BannerList = () => {
-  const [banners, setBanners] = useState<Banner[]>([]);
-
+  const [banners, setBanners] = useState<BannerItem[]>([]);
+  const [loadingBanners, setLoadingBanners] = useState(true);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [reloadKey, setReloadKey] = useState(0);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [creatingBanner, setCreatingBanner] = useState(false);
+  const [newBanner, setNewBanner] = useState(defaultNewBanner);
+  const [newBannerImageFile, setNewBannerImageFile] = useState<File | null>(null);
+  const [newBannerImagePreview, setNewBannerImagePreview] = useState<string | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [updatingBanner, setUpdatingBanner] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
+  const [editingBanner, setEditingBanner] = useState<BannerItem | null>(null);
+  const [editingForm, setEditingForm] = useState(defaultNewBanner);
+  const [editingBannerImageFile, setEditingBannerImageFile] = useState<File | null>(null);
+  const [editingBannerImagePreview, setEditingBannerImagePreview] = useState<string | null>(null);
+  const [viewingBanner, setViewingBanner] = useState<BannerItem | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingBanner, setDeletingBanner] = useState(false);
+  const [bannerToDelete, setBannerToDelete] = useState<BannerItem | null>(null);
 
-  const [newBanner, setNewBanner] = useState<Banner>(emptyBanner);
-  const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
-  const [viewingBanner, setViewingBanner] = useState<Banner | null>(null);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const pageItems = useMemo((): (number | "ellipsis")[] => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const set = new Set<number>([1, totalPages]);
+    for (let p = page - 1; p <= page + 1; p++) {
+      if (p >= 1 && p <= totalPages) set.add(p);
+    }
+    const sorted = [...set].sort((a, b) => a - b);
+    const out: (number | "ellipsis")[] = [];
+    for (let i = 0; i < sorted.length; i++) {
+      if (i > 0 && sorted[i] - sorted[i - 1] > 1) out.push("ellipsis");
+      out.push(sorted[i]);
+    }
+    return out;
+  }, [page, totalPages]);
 
   useEffect(() => {
-    loadBanners();
-  }, []);
-
-  const loadBanners = () => {
-    const loadedBanners: Banner[] = [
-      {
-        id: 'shop-banner',
-        name: 'Shop Banner',
-        page: 'Shop',
-        image: getOverride("shop.banner.image", ""),
-        preTitle: getOverride("shop.banner.preTitle", ""),
-        title: getOverride("shop.banner.title", ""),
-        subtitle: getOverride("shop.banner.subtitle", "")
-      },
-      {
-        id: 'contact-banner',
-        name: 'Contact Banner',
-        page: 'Contact',
-        image: getOverride("contact.banner.image", ""),
-        preTitle: getOverride("contact.banner.preTitle", ""),
-        title: getOverride("contact.banner.title", "")
-      }
-    ];
-    setBanners(loadedBanners);
-  };
-
-  const handleSetNewImageFromFile = (file: File | null) => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === "string" ? reader.result : "";
-      setNewBanner((prev) => ({ ...prev, image: result }));
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleSetEditImageFromFile = (file: File | null) => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === "string" ? reader.result : "";
-      if (editingBanner) {
-        setEditingBanner({ ...editingBanner, image: result });
+    const loadBanners = async () => {
+      setLoadingBanners(true);
+      try {
+        const res = await fetchBannersPage({ page, limit: PAGE_SIZE }, { suppress401Redirect: true });
+        setBanners(res.list);
+        setTotal(res.total);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Failed to fetch banners";
+        toast.error(msg);
+      } finally {
+        setLoadingBanners(false);
       }
     };
-    reader.readAsDataURL(file);
-  };
+    void loadBanners();
+  }, [page, reloadKey]);
 
-  const handleAddSubmit = async () => {
-    if (!newBanner.name.trim() || !newBanner.page.trim() || !newBanner.image.trim() || !newBanner.title.trim()) {
-      toast.error("Please fill in Name, Page, Image URL, and Title.");
-      return;
-    }
+  useEffect(() => {
+    if (!loadingBanners && page > totalPages) setPage(totalPages);
+  }, [loadingBanners, page, totalPages]);
 
-    const bannerToAdd: Banner = {
-      ...newBanner,
-      id: newBanner.name.toLowerCase().replace(/\s+/g, '-'),
+  useEffect(() => {
+    return () => {
+      if (newBannerImagePreview && newBannerImagePreview.startsWith("blob:")) {
+        URL.revokeObjectURL(newBannerImagePreview);
+      }
+      if (editingBannerImagePreview && editingBannerImagePreview.startsWith("blob:")) {
+        URL.revokeObjectURL(editingBannerImagePreview);
+      }
     };
+  }, [newBannerImagePreview, editingBannerImagePreview]);
 
-    setBanners([...banners, bannerToAdd]);
-    setIsAddOpen(false);
-    setNewBanner(emptyBanner);
-    toast.success("Banner added");
-  };
-
-  const startEdit = (b: Banner) => {
-    setEditingBanner(b);
-    setIsEditOpen(true);
-  };
-
-  const handleEditSubmit = () => {
-    if (!editingBanner) return;
-    if (!editingBanner.name.trim() || !editingBanner.page.trim() || !editingBanner.image.trim() || !editingBanner.title.trim()) {
-      toast.error("Please fill in Name, Page, Image URL, and Title.");
-      return;
-    }
-
-    setBanners(banners.map((b) => (b.id === editingBanner.id ? editingBanner : b)));
-    setIsEditOpen(false);
-    setEditingBanner(null);
-    toast.success("Banner updated");
-  };
-
-  const startView = (b: Banner) => {
-    setViewingBanner(b);
+  const startView = (banner: BannerItem) => {
+    setViewingBanner(banner);
     setIsViewOpen(true);
   };
 
-  const remove = (id: string) => {
-    if (confirm('Are you sure you want to delete this banner?')) {
-      setBanners(banners.filter(banner => banner.id !== id));
-      toast.success("Banner removed");
+  const startEdit = (banner: BannerItem) => {
+    setEditingBanner(banner);
+    setEditingForm({
+      title: banner.title ?? "",
+      subtitle: banner.subtitle ?? "",
+      description: banner.description ?? "",
+      image: banner.image ?? "",
+      link: banner.link ?? "",
+      position: (banner.position as BannerPosition) ?? "home",
+      status: banner.status,
+      sort_order: String(banner.sort_order ?? 1),
+    });
+    setEditingBannerImageFile(null);
+    setEditingBannerImagePreview(banner.image ?? null);
+    setIsEditOpen(true);
+  };
+
+  const handleCreateBanner = async () => {
+    if (!newBanner.title.trim()) {
+      toast.error("Title is required");
+      return;
+    }
+    if (!newBanner.image.trim()) {
+      toast.error("Image is required");
+      return;
+    }
+    const sortOrder = Number(newBanner.sort_order);
+    if (!Number.isFinite(sortOrder) || sortOrder < 0) {
+      toast.error("Sort order must be a valid number");
+      return;
+    }
+
+    setCreatingBanner(true);
+    try {
+      const payload = {
+        title: newBanner.title.trim(),
+        subtitle: newBanner.subtitle.trim() || null,
+        description: newBanner.description.trim() || null,
+        image: newBanner.image.trim() || null,
+        link: newBanner.link.trim() || null,
+        position: newBanner.position,
+        status: newBanner.status,
+        sort_order: sortOrder,
+      };
+
+      await createBanner(payload, { suppress401Redirect: true });
+      toast.success("Banner created");
+      setIsAddOpen(false);
+      setNewBanner(defaultNewBanner);
+      setNewBannerImageFile(null);
+      setNewBannerImagePreview(null);
+      setPage(1);
+      setReloadKey((k) => k + 1);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to create banner";
+      toast.error(msg);
+    } finally {
+      setCreatingBanner(false);
+    }
+  };
+
+  const handlePickNewBannerImage = (file: File) => {
+    setNewBannerImageFile(file);
+    const objectUrl = URL.createObjectURL(file);
+    setNewBannerImagePreview(objectUrl);
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const value = typeof reader.result === "string" ? reader.result : "";
+      setNewBanner((prev) => ({ ...prev, image: value }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearNewBannerImage = () => {
+    if (newBannerImagePreview && newBannerImagePreview.startsWith("blob:")) {
+      URL.revokeObjectURL(newBannerImagePreview);
+    }
+    setNewBannerImageFile(null);
+    setNewBannerImagePreview(null);
+    setNewBanner((prev) => ({ ...prev, image: "" }));
+  };
+
+  const handlePickEditingBannerImage = (file: File) => {
+    setEditingBannerImageFile(file);
+    const objectUrl = URL.createObjectURL(file);
+    setEditingBannerImagePreview(objectUrl);
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const value = typeof reader.result === "string" ? reader.result : "";
+      setEditingForm((prev) => ({ ...prev, image: value }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearEditingBannerImage = () => {
+    if (editingBannerImagePreview && editingBannerImagePreview.startsWith("blob:")) {
+      URL.revokeObjectURL(editingBannerImagePreview);
+    }
+    setEditingBannerImageFile(null);
+    setEditingBannerImagePreview(null);
+    setEditingForm((prev) => ({ ...prev, image: "" }));
+  };
+
+  const handleUpdateBanner = async () => {
+    if (!editingBanner?.id) {
+      toast.error("Banner id is missing");
+      return;
+    }
+    if (!editingForm.title.trim()) {
+      toast.error("Title is required");
+      return;
+    }
+    if (!editingForm.image.trim()) {
+      toast.error("Image is required");
+      return;
+    }
+    const sortOrder = Number(editingForm.sort_order);
+    if (!Number.isFinite(sortOrder) || sortOrder < 0) {
+      toast.error("Sort order must be a valid number");
+      return;
+    }
+
+    setUpdatingBanner(true);
+    try {
+      const payload = {
+        title: editingForm.title.trim(),
+        subtitle: editingForm.subtitle.trim() || null,
+        description: editingForm.description.trim() || null,
+        image: editingForm.image.trim() || null,
+        link: editingForm.link.trim() || null,
+        position: editingForm.position,
+        status: editingForm.status,
+        sort_order: sortOrder,
+      };
+
+      await updateBanner(editingBanner.id, payload, { suppress401Redirect: true });
+      toast.success("Banner updated");
+      setIsEditOpen(false);
+      setEditingBanner(null);
+      setEditingBannerImageFile(null);
+      setEditingBannerImagePreview(null);
+      setReloadKey((k) => k + 1);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to update banner";
+      toast.error(msg);
+    } finally {
+      setUpdatingBanner(false);
+    }
+  };
+
+  const handleDeleteBanner = async () => {
+    if (!bannerToDelete?.id) {
+      toast.error("Banner id is missing");
+      return;
+    }
+    setDeletingBanner(true);
+    try {
+      await deleteBanner(bannerToDelete.id, { suppress401Redirect: true });
+      toast.success("Banner deleted");
+      setDeleteDialogOpen(false);
+      setBannerToDelete(null);
+      setReloadKey((k) => k + 1);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to delete banner";
+      toast.error(msg);
+      throw err;
+    } finally {
+      setDeletingBanner(false);
     }
   };
 
@@ -158,12 +302,16 @@ const BannerList = () => {
               <button
                 type="button"
                 onClick={() => {
-                  setNewBanner(emptyBanner);
+                  if (newBannerImagePreview && newBannerImagePreview.startsWith("blob:")) {
+                    URL.revokeObjectURL(newBannerImagePreview);
+                  }
+                  setNewBanner(defaultNewBanner);
+                  setNewBannerImageFile(null);
+                  setNewBannerImagePreview(null);
                   setIsAddOpen(true);
                 }}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-body hover:bg-muted/50 transition-colors"
               >
-                <Plus className="h-4 w-4" />
                 Create Banner
               </button>
             </div>
@@ -172,25 +320,36 @@ const BannerList = () => {
               <Table className="table-fixed min-w-[800px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[30%]">Name</TableHead>
-                    <TableHead className="w-[15%]">Page</TableHead>
-                    <TableHead className="w-[20%]">Title</TableHead>
                     <TableHead className="w-[20%]">Image</TableHead>
+                    <TableHead className="w-[30%]">Title</TableHead>
+                    <TableHead className="w-[20%]">Subtitle</TableHead>
+                    <TableHead className="w-[15%]">Position</TableHead>
                     <TableHead className="w-[15%]">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {banners.map((b) => (
+                  {loadingBanners ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="p-0">
+                        <div className="flex min-h-[180px] items-center justify-center py-8">
+                          <Loading size={24} message="Loading banners..." className="text-primary" />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : banners.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="p-0">
+                        <Empty title="No banners found" description="No banner records were returned from the API." />
+                      </TableCell>
+                    </TableRow>
+                  ) : banners.map((b) => (
                     <TableRow key={b.id}>
                       <TableCell className="p-2 align-middle">
-                        <span className="px-2 py-1.5 text-sm font-body truncate block w-full">
-                          {b.name}
-                        </span>
-                      </TableCell>
-                      <TableCell className="p-2 align-middle">
-                        <span className="px-2 py-1.5 text-sm font-body truncate block w-full">
-                          {b.page}
-                        </span>
+                        {b.image ? (
+                          <img src={b.image} alt={b.title} className="h-12 w-24 object-cover rounded border border-border" />
+                        ) : (
+                          <span className="px-2 py-1.5 text-sm font-body truncate block w-full text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="p-2 align-middle">
                         <span className="px-2 py-1.5 text-sm font-body truncate block w-full">
@@ -198,8 +357,13 @@ const BannerList = () => {
                         </span>
                       </TableCell>
                       <TableCell className="p-2 align-middle">
-                        <span className="px-2 py-1.5 text-sm font-body truncate block w-full text-muted-foreground">
-                          {b.image ? "Link" : "—"}
+                        <span className="px-2 py-1.5 text-sm font-body truncate block w-full">
+                          {b.subtitle || "—"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="p-2 align-middle">
+                        <span className="px-2 py-1.5 text-sm font-body truncate block w-full">
+                          {b.position}
                         </span>
                       </TableCell>
                       <TableCell className="p-2 align-middle">
@@ -222,7 +386,10 @@ const BannerList = () => {
                           </button>
                           <button
                             type="button"
-                            onClick={() => remove(b.id)}
+                            onClick={() => {
+                              setBannerToDelete(b);
+                              setDeleteDialogOpen(true);
+                            }}
                             className="p-1.5 rounded-lg text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-colors"
                             title="Remove"
                           >
@@ -232,16 +399,62 @@ const BannerList = () => {
                       </TableCell>
                     </TableRow>
                   ))}
-                  {banners.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="p-8 text-center text-muted-foreground">
-                        No banners yet. Create your first banner to get started.
-                      </TableCell>
-                    </TableRow>
-                  )}
                 </TableBody>
               </Table>
             </div>
+            {!loadingBanners && total > 0 ? (
+              <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between sm:items-center pt-2">
+                <p className="text-xs text-muted-foreground font-body order-2 sm:order-1">
+                  Showing page {page} of {totalPages} ({total} banners)
+                </p>
+                {totalPages > 1 ? (
+                  <Pagination className="order-1 sm:order-2 mx-0 w-full sm:w-auto justify-center sm:justify-end">
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          href="#"
+                          className={page <= 1 ? "pointer-events-none opacity-50" : undefined}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (page > 1) setPage((p) => p - 1);
+                          }}
+                        />
+                      </PaginationItem>
+                      {pageItems.map((item, idx) =>
+                        item === "ellipsis" ? (
+                          <PaginationItem key={`e-${idx}`}>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        ) : (
+                          <PaginationItem key={item}>
+                            <PaginationLink
+                              href="#"
+                              isActive={item === page}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setPage(item);
+                              }}
+                            >
+                              {item}
+                            </PaginationLink>
+                          </PaginationItem>
+                        )
+                      )}
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          className={page >= totalPages ? "pointer-events-none opacity-50" : undefined}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (page < totalPages) setPage((p) => p + 1);
+                          }}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
@@ -250,99 +463,149 @@ const BannerList = () => {
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create New Banner</DialogTitle>
+            <DialogTitle>Create Banner</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs font-body font-medium">Banner Name*</label>
-                <input
-                  required
-                  value={newBanner.name}
-                  onChange={(e) => setNewBanner({ ...newBanner, name: e.target.value })}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                  placeholder="My Banner"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-body font-medium">Page*</label>
-                <select
-                  required
-                  value={newBanner.page}
-                  onChange={(e) => setNewBanner({ ...newBanner, page: e.target.value })}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                >
-                  <option value="Home">Home</option>
-                  <option value="Shop">Shop</option>
-                  <option value="Contact">Contact</option>
-                  <option value="About">About</option>
-                  <option value="Blog">Blog</option>
-                </select>
-              </div>
-            </div>
             <div className="space-y-2">
-              <label className="text-xs font-body font-medium">Image URL*</label>
+              <label className="text-xs font-body font-medium">Title*</label>
               <input
-                required
-                value={newBanner.image}
-                onChange={(e) => setNewBanner({ ...newBanner, image: e.target.value })}
+                value={newBanner.title}
+                onChange={(e) => setNewBanner((prev) => ({ ...prev, title: e.target.value }))}
                 className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                placeholder="https://example.com/banner.jpg"
+                placeholder="Live with intention."
               />
-              <div className="flex items-center gap-3 mt-2">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleSetNewImageFromFile(e.target.files?.[0] ?? null)}
-                  className="block w-full text-sm flex-1"
-                />
-                {newBanner.image && newBanner.image.startsWith("data:image") ? (
-                  <img src={newBanner.image} alt="Preview" className="h-10 w-10 rounded border border-border object-cover" />
-                ) : null}
-              </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs font-body font-medium">Pre-Title</label>
-                <input
-                  value={newBanner.preTitle}
-                  onChange={(e) => setNewBanner({ ...newBanner, preTitle: e.target.value })}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                  placeholder="New Collection"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-body font-medium">Main Title*</label>
-                <input
-                  required
-                  value={newBanner.title}
-                  onChange={(e) => setNewBanner({ ...newBanner, title: e.target.value })}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                  placeholder="Premium Furniture"
-                />
-              </div>
-            </div>
+
             <div className="space-y-2">
               <label className="text-xs font-body font-medium">Subtitle</label>
-              <textarea
+              <input
                 value={newBanner.subtitle}
-                onChange={(e) => setNewBanner({ ...newBanner, subtitle: e.target.value })}
+                onChange={(e) => setNewBanner((prev) => ({ ...prev, subtitle: e.target.value }))}
                 className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                placeholder="Discover our exclusive collection..."
-                rows={3}
+                placeholder="New Collection 2026"
               />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-body font-medium">Description</label>
+              <textarea
+                value={newBanner.description}
+                onChange={(e) => setNewBanner((prev) => ({ ...prev, description: e.target.value }))}
+                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                rows={3}
+                placeholder="Handcrafted furniture that brings warmth..."
+              />
+            </div>
+
+            <UploadImage
+              label="Banner Image*"
+              previewUrl={newBannerImagePreview}
+              onFileSelect={handlePickNewBannerImage}
+              onRemove={clearNewBannerImage}
+              disabled={creatingBanner}
+            />
+
+            <div className="space-y-2">
+              <label className="text-xs font-body font-medium">Link</label>
+              <input
+                value={newBanner.link}
+                onChange={(e) => setNewBanner((prev) => ({ ...prev, link: e.target.value }))}
+                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                placeholder="https://example.com"
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-body font-medium">Position*</label>
+                <Select
+                  value={newBanner.position}
+                  onValueChange={(value) =>
+                    setNewBanner((prev) => ({ ...prev, position: value as BannerPosition }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select position" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="home">home</SelectItem>
+                    <SelectItem value="shop">shop</SelectItem>
+                    <SelectItem value="about_us">about_us</SelectItem>
+                    <SelectItem value="contact">contact</SelectItem>
+                    <SelectItem value="blog">blog</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-body font-medium">Status*</label>
+                <Select
+                  value={newBanner.status}
+                  onValueChange={(value) =>
+                    setNewBanner((prev) => ({ ...prev, status: value as BannerStatus }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">active</SelectItem>
+                    <SelectItem value="inactive">inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-body font-medium">Sort Order*</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={newBanner.sort_order}
+                  onChange={(e) => setNewBanner((prev) => ({ ...prev, sort_order: e.target.value }))}
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>
-            <button onClick={() => setIsAddOpen(false)} className="px-4 py-2 rounded-lg border border-border text-sm font-body hover:bg-muted/50 transition-colors">
+            <button
+              onClick={() => {
+                if (newBannerImagePreview && newBannerImagePreview.startsWith("blob:")) {
+                  URL.revokeObjectURL(newBannerImagePreview);
+                }
+                setIsAddOpen(false);
+              }}
+              className="px-4 py-2 rounded-lg border border-border text-sm font-body hover:bg-muted/50 transition-colors"
+            >
               Cancel
             </button>
-            <button onClick={handleAddSubmit} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-body hover:bg-primary/90 transition-colors">
-              Save Banner
+            <button
+              onClick={handleCreateBanner}
+              disabled={creatingBanner}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-body hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {creatingBanner ? "Creating..." : "Create"}
             </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteDialogOpen(open);
+          if (!open) setBannerToDelete(null);
+        }}
+        title="Delete banner?"
+        description={
+          bannerToDelete
+            ? `This will permanently remove "${bannerToDelete.title}". This action cannot be undone.`
+            : "This action cannot be undone."
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        destructive
+        loading={deletingBanner}
+        onConfirm={handleDeleteBanner}
+      />
 
       {/* Edit Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
@@ -352,88 +615,115 @@ const BannerList = () => {
           </DialogHeader>
           {editingBanner && (
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-body font-medium">Banner Name*</label>
-                  <input
-                    required
-                    value={editingBanner.name}
-                    onChange={(e) => setEditingBanner({ ...editingBanner, name: e.target.value })}
-                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-body font-medium">Page*</label>
-                  <select
-                    required
-                    value={editingBanner.page}
-                    onChange={(e) => setEditingBanner({ ...editingBanner, page: e.target.value })}
-                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                  >
-                    <option value="Home">Home</option>
-                    <option value="Shop">Shop</option>
-                    <option value="Contact">Contact</option>
-                    <option value="About">About</option>
-                    <option value="Blog">Blog</option>
-                  </select>
-                </div>
-              </div>
               <div className="space-y-2">
-                <label className="text-xs font-body font-medium">Image URL*</label>
+                <label className="text-xs font-body font-medium">Title*</label>
                 <input
-                  required
-                  value={editingBanner.image}
-                  onChange={(e) => setEditingBanner({ ...editingBanner, image: e.target.value })}
+                  value={editingForm.title}
+                  onChange={(e) => setEditingForm((prev) => ({ ...prev, title: e.target.value }))}
                   className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
                 />
-                <div className="flex items-center gap-3 mt-2">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleSetEditImageFromFile(e.target.files?.[0] ?? null)}
-                    className="block w-full text-sm flex-1"
-                  />
-                  {editingBanner.image && editingBanner.image.startsWith("data:image") ? (
-                    <img src={editingBanner.image} alt="Preview" className="h-10 w-10 rounded border border-border object-cover" />
-                  ) : null}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-body font-medium">Pre-Title</label>
-                  <input
-                    value={editingBanner.preTitle}
-                    onChange={(e) => setEditingBanner({ ...editingBanner, preTitle: e.target.value })}
-                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-body font-medium">Main Title*</label>
-                  <input
-                    required
-                    value={editingBanner.title}
-                    onChange={(e) => setEditingBanner({ ...editingBanner, title: e.target.value })}
-                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                  />
-                </div>
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-body font-medium">Subtitle</label>
+                <input
+                  value={editingForm.subtitle}
+                  onChange={(e) => setEditingForm((prev) => ({ ...prev, subtitle: e.target.value }))}
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-body font-medium">Description</label>
                 <textarea
-                  value={editingBanner.subtitle}
-                  onChange={(e) => setEditingBanner({ ...editingBanner, subtitle: e.target.value })}
+                  value={editingForm.description}
+                  onChange={(e) => setEditingForm((prev) => ({ ...prev, description: e.target.value }))}
                   className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
                   rows={3}
                 />
               </div>
+              <UploadImage
+                label="Banner Image*"
+                previewUrl={editingBannerImagePreview}
+                onFileSelect={handlePickEditingBannerImage}
+                onRemove={clearEditingBannerImage}
+                disabled={updatingBanner}
+              />
+              <div className="space-y-2">
+                <label className="text-xs font-body font-medium">Link</label>
+                <input
+                  value={editingForm.link}
+                  onChange={(e) => setEditingForm((prev) => ({ ...prev, link: e.target.value }))}
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-body font-medium">Position*</label>
+                  <Select
+                    value={editingForm.position}
+                    onValueChange={(value) =>
+                      setEditingForm((prev) => ({ ...prev, position: value as BannerPosition }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select position" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="home">home</SelectItem>
+                      <SelectItem value="shop">shop</SelectItem>
+                      <SelectItem value="about_us">about_us</SelectItem>
+                      <SelectItem value="contact">contact</SelectItem>
+                      <SelectItem value="blog">blog</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-body font-medium">Status*</label>
+                  <Select
+                    value={editingForm.status}
+                    onValueChange={(value) =>
+                      setEditingForm((prev) => ({ ...prev, status: value as BannerStatus }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">active</SelectItem>
+                      <SelectItem value="inactive">inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-body font-medium">Sort Order*</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={editingForm.sort_order}
+                    onChange={(e) => setEditingForm((prev) => ({ ...prev, sort_order: e.target.value }))}
+                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                  />
+                </div>
+              </div>
             </div>
           )}
           <DialogFooter>
-            <button onClick={() => setIsEditOpen(false)} className="px-4 py-2 rounded-lg border border-border text-sm font-body hover:bg-muted/50 transition-colors">
+            <button
+              onClick={() => {
+                if (editingBannerImagePreview && editingBannerImagePreview.startsWith("blob:")) {
+                  URL.revokeObjectURL(editingBannerImagePreview);
+                }
+                setIsEditOpen(false);
+              }}
+              className="px-4 py-2 rounded-lg border border-border text-sm font-body hover:bg-muted/50 transition-colors"
+            >
               Cancel
             </button>
-            <button onClick={handleEditSubmit} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-body hover:bg-primary/90 transition-colors">
-              Update Banner
+            <button
+              onClick={handleUpdateBanner}
+              disabled={updatingBanner}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-body hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {updatingBanner ? "Updating..." : "Update"}
             </button>
           </DialogFooter>
         </DialogContent>
@@ -441,39 +731,63 @@ const BannerList = () => {
 
       {/* View Dialog */}
       <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-        <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto p-0">
           <DialogHeader>
-            <DialogTitle>View Banner</DialogTitle>
+            <DialogTitle className="sr-only">View Banner</DialogTitle>
           </DialogHeader>
           {viewingBanner && (
-            <div className="grid gap-4 py-4">
-              {viewingBanner.image && (
-                <div className="w-full h-48 rounded-lg overflow-hidden border border-border mb-2 relative">
-                  <img src={viewingBanner.image} alt={viewingBanner.name} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/40 flex flex-col justify-center items-center text-white p-6 text-center">
-                    <span className="text-sm uppercase tracking-widest">{viewingBanner.preTitle}</span>
-                    <h2 className="text-3xl font-display mt-2 mb-4">{viewingBanner.title}</h2>
-                    <p className="text-sm max-w-md">{viewingBanner.subtitle}</p>
+            <div>
+              <div className="px-4 pt-4">
+                <div className="relative h-72 w-full overflow-hidden rounded-lg border border-border bg-muted">
+                  {viewingBanner.image ? (
+                    <img src={viewingBanner.image} alt={viewingBanner.title} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
+                      No banner image
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 p-6 text-white">
+                    <div className="mb-2 flex items-center gap-2">
+                      <span className="rounded-full bg-white/20 px-2 py-1 text-[11px] uppercase tracking-wider">
+                        {viewingBanner.position}
+                      </span>
+                      <span
+                        className={`rounded-full px-2 py-1 text-[11px] uppercase tracking-wider ${
+                          viewingBanner.status === "active"
+                            ? "bg-green-500/25 text-green-100"
+                            : "bg-red-500/25 text-red-100"
+                        }`}
+                      >
+                        {viewingBanner.status}
+                      </span>
+                    </div>
+                    <h2 className="text-2xl font-display leading-tight">{viewingBanner.title}</h2>
+                    <p className="mt-1 text-sm text-white/90">{viewingBanner.subtitle || "—"}</p>
                   </div>
                 </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-muted-foreground font-body">Name</p>
-                  <p className="font-body text-sm font-medium">{viewingBanner.name}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground font-body">Page</p>
-                  <p className="font-body text-sm">{viewingBanner.page}</p>
-                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground font-body">Image URL</p>
-                <p className="font-body text-sm break-all">{viewingBanner.image || "—"}</p>
+
+              <div className="grid gap-4 p-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Position</p>
+                    <p className="mt-1 text-sm font-medium">{viewingBanner.position}</p>
+                  </div>
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Sort Order</p>
+                    <p className="mt-1 text-sm font-medium">{viewingBanner.sort_order}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs text-muted-foreground font-body">Description</p>
+                  <p className="mt-1 text-sm leading-relaxed">{viewingBanner.description || "—"}</p>
+                </div>
               </div>
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="border-t border-border p-4">
             <button onClick={() => setIsViewOpen(false)} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-body hover:bg-primary/90 transition-colors">
               Close
             </button>

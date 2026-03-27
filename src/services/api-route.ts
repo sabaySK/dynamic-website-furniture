@@ -18,15 +18,27 @@
 
 /** Admin Routes */
 
+export const adminAboutRoutes = {
+  get: "/admin/about",
+  upsert: "/admin/about",
+} as const;
+
 export const adminAuthRoutes = {
   login: "/admin/login",
   logout: "/admin/logout",
   profile: "/admin/profile",
 } as const;
 
-export const customerRoute = {
+export const adminCustomerRoute = {
   get: "/admin/customers",
   updateStatus: "/admin/customers/{customer}/status",
+} as const;
+
+export const adminBannerRoute = {
+  get: "/admin/banners",
+  create: "/admin/banners",
+  update: "/admin/banners/{banner}",
+  delete: "/admin/banners/{banner}",
 } as const;
 
 

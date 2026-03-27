@@ -1,4 +1,4 @@
-import { customerRoute } from "@/services/api-route";
+import { adminCustomerRoute } from "@/services/api-route";
 import { apiClient } from "@/services/api-client";
 import type { RequestConfig } from "@/services/api-type";
 
@@ -108,7 +108,7 @@ export async function fetchCustomersPage(
 ): Promise<CustomersPage> {
   const page = params.page ?? 1;
   const limit = params.limit ?? 10;
-  const res = await apiClient.get<any>(customerRoute.get, {
+  const res = await apiClient.get<any>(adminCustomerRoute.get, {
     ...(config ?? {}),
     params: { page, limit },
   });
@@ -133,7 +133,7 @@ export async function updateCustomerStatus(
   status: CustomerStatus,
   config?: RequestConfig
 ): Promise<CustomerItem | null> {
-  const endpoint = customerRoute.updateStatus.replace("{customer}", encodeURIComponent(String(customerId)));
+  const endpoint = adminCustomerRoute.updateStatus.replace("{customer}", encodeURIComponent(String(customerId)));
   const body = { status };
   try {
     const res = await apiClient.post<any>(endpoint, body, config);
