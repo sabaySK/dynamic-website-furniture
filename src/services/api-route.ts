@@ -41,6 +41,13 @@ export const adminBannerRoute = {
   delete: "/admin/banners/{banner}",
 } as const;
 
+export const adminOurValuesRoute = {
+  get: "/admin/about/our-values",
+  create: "/admin/about/our-values",
+  update: "/admin/about/our-values/{ourValues}",
+  delete: "/admin/about/our-values/{ourValues}",
+} as const;
+
 export const adminTeamRoute = {
   get: "/admin/about/teams",
   create: "/admin/about/teams",
@@ -48,6 +55,12 @@ export const adminTeamRoute = {
   delete: "/admin/about/teams/{team}",
 } as const;
 
+export const adminWhyChooseRoute = {
+  get: "/admin/about/why-choose",
+  create: "/admin/about/why-choose",
+  update: "/admin/about/why-choose/{whyChoose}",
+  delete: "/admin/about/why-choose/{whyChoose}",
+} as const;
 
 
 
