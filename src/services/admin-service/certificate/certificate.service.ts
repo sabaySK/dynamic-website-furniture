@@ -1,9 +1,9 @@
-import { adminOurValuesRoute } from "@/services/api-route";
+import { adminCertificationsRoute } from "@/services/api-route";
 import { apiClient } from "@/services/api-client";
 import type { RequestConfig } from "@/services/api-type";
 import { fetchAdminAbout } from "@/services/admin-service/about-us/about-us.service";
 
-export interface OurValueItem {
+export interface CertificationItem {
   id: number | string;
   about_id: number;
   icon: string | null;
@@ -13,22 +13,22 @@ export interface OurValueItem {
   updated_at: string | null;
 }
 
-export interface OurValuePage {
-  list: OurValueItem[];
+export interface CertificationPage {
+  list: CertificationItem[];
   total: number;
   page: number;
   limit: number;
   offset: number;
 }
 
-export interface CreateOurValuePayload {
+export interface CreateCertificationPayload {
   title: string;
   description: string | null;
   icon: File | string | null;
   about_id?: number;
 }
 
-export type UpdateOurValuePayload = CreateOurValuePayload;
+export type UpdateCertificationPayload = CreateCertificationPayload;
 
 function toObject(v: unknown): Record<string, unknown> | null {
   return v && typeof v === "object" ? (v as Record<string, unknown>) : null;
@@ -39,9 +39,9 @@ function toNumber(v: unknown, fallback: number): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
-function mapOurValue(raw: Record<string, unknown>, index: number): OurValueItem {
+function mapCertification(raw: Record<string, unknown>, index: number): CertificationItem {
   return {
-    id: (raw.id as number | string | undefined) ?? `our-value-${index}`,
+    id: (raw.id as number | string | undefined) ?? `certification-${index}`,
     about_id: toNumber(raw.about_id, 0),
     icon: raw.icon == null ? null : String(raw.icon),
     title: String(raw.title ?? ""),
@@ -55,8 +55,8 @@ function extractRecord(res: unknown): Record<string, unknown> | null {
   const root = toObject(res);
   if (!root) return null;
   return (
-    toObject(root.our_value) ??
-    toObject(root.ourValue) ??
+    toObject(root.certification) ??
+    toObject(root.certificate) ??
     toObject(root.item) ??
     toObject(root.data) ??
     root
@@ -71,7 +71,7 @@ async function resolveAboutId(payloadAboutId: number | undefined, config?: Reque
   throw new Error("About record not found. Please create About first.");
 }
 
-function buildBody(payload: CreateOurValuePayload, aboutId: number): FormData | Record<string, unknown> {
+function buildBody(payload: CreateCertificationPayload, aboutId: number): FormData | Record<string, unknown> {
   const useFormData = typeof File !== "undefined" && payload.icon instanceof File;
   if (!useFormData) {
     return {
@@ -90,13 +90,13 @@ function buildBody(payload: CreateOurValuePayload, aboutId: number): FormData | 
   return body;
 }
 
-export async function fetchOurValuesPage(
+export async function fetchCertificationsPage(
   params: { page?: number; limit?: number } = {},
   config?: RequestConfig
-): Promise<OurValuePage> {
+): Promise<CertificationPage> {
   const page = params.page ?? 1;
   const limit = params.limit ?? 10;
-  const res = await apiClient.get<any>(adminOurValuesRoute.get, {
+  const res = await apiClient.get<any>(adminCertificationsRoute.get, {
     ...(config ?? {}),
     params: { page, limit },
   });
@@ -105,7 +105,7 @@ export async function fetchOurValuesPage(
   const rawList = Array.isArray(obj.list) ? obj.list : [];
   const list = rawList
     .filter((x): x is Record<string, unknown> => typeof x === "object" && x !== null)
-    .map(mapOurValue);
+    .map(mapCertification);
 
   return {
     list,
@@ -116,40 +116,40 @@ export async function fetchOurValuesPage(
   };
 }
 
-export async function fetchOurValues(config?: RequestConfig): Promise<OurValueItem[]> {
-  const { list } = await fetchOurValuesPage({ page: 1, limit: 100 }, config);
+export async function fetchCertifications(config?: RequestConfig): Promise<CertificationItem[]> {
+  const { list } = await fetchCertificationsPage({ page: 1, limit: 100 }, config);
   return list;
 }
 
-export async function createOurValue(
-  payload: CreateOurValuePayload,
+export async function createCertification(
+  payload: CreateCertificationPayload,
   config?: RequestConfig
-): Promise<OurValueItem | null> {
+): Promise<CertificationItem | null> {
   const aboutId = await resolveAboutId(payload.about_id, config);
   const body = buildBody(payload, aboutId);
-  const res = await apiClient.post<any>(adminOurValuesRoute.create, body, config);
+  const res = await apiClient.post<any>(adminCertificationsRoute.create, body, config);
   const record = extractRecord(res);
-  return record ? mapOurValue(record, 0) : null;
+  return record ? mapCertification(record, 0) : null;
 }
 
-export async function updateOurValue(
+export async function updateCertification(
   id: number | string,
-  payload: UpdateOurValuePayload,
+  payload: UpdateCertificationPayload,
   config?: RequestConfig
-): Promise<OurValueItem | null> {
-  const endpoint = adminOurValuesRoute.update.replace("{ourValues}", encodeURIComponent(String(id)));
+): Promise<CertificationItem | null> {
+  const endpoint = adminCertificationsRoute.update.replace("{certification}", encodeURIComponent(String(id)));
   const aboutId = await resolveAboutId(payload.about_id, config);
   const body = buildBody(payload, aboutId);
   const res = await apiClient.post<any>(endpoint, body, config);
   const record = extractRecord(res);
-  return record ? mapOurValue(record, 0) : null;
+  return record ? mapCertification(record, 0) : null;
 }
 
-export async function deleteOurValue(
+export async function deleteCertification(
   id: number | string,
   config?: RequestConfig
 ): Promise<{ success: boolean }> {
-  const endpoint = adminOurValuesRoute.delete.replace("{ourValues}", encodeURIComponent(String(id)));
+  const endpoint = adminCertificationsRoute.delete.replace("{certification}", encodeURIComponent(String(id)));
   try {
     await apiClient.delete<any>(endpoint, config);
   } catch {
