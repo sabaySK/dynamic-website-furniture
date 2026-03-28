@@ -111,7 +111,7 @@ const IndexAdmin = () => {
               <p className="text-xs text-muted-foreground font-body">
                 View and manage status of customers
               </p>
-            </div>
+                  </div>
             </div>
 
             <div className="border border-border rounded-lg overflow-hidden">

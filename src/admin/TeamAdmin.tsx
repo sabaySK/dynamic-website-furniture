@@ -112,7 +112,7 @@ const TeamAdmin = () => {
         { suppress401Redirect: true }
       );
       toast.success("Team member created");
-      setIsAddOpen(false);
+    setIsAddOpen(false);
       setNewMember(emptyForm);
       if (page !== 1) setPage(1);
       else void loadTeams();
@@ -150,7 +150,7 @@ const TeamAdmin = () => {
         { suppress401Redirect: true }
       );
       toast.success("Team member updated");
-      setIsEditOpen(false);
+    setIsEditOpen(false);
       setEditingMember(null);
       void loadTeams();
     } catch (err) {
@@ -196,14 +196,14 @@ const TeamAdmin = () => {
               </div>
               <div className="flex items-center gap-2">
                 <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                  <button
-                    type="button"
+                    <button
+                      type="button"
                     onClick={() => setIsAddOpen(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-body hover:bg-muted/50 transition-colors"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add Member
-                  </button>
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-body hover:bg-muted/50 transition-colors"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Member
+                    </button>
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Create Team Member</DialogTitle>
@@ -277,45 +277,45 @@ const TeamAdmin = () => {
                   ) : (
                     items.map((it) => (
                       <TableRow key={String(it.id)}>
-                        <TableCell className="p-2 align-middle">
+                      <TableCell className="p-2 align-middle">
                           <span className="px-2 py-1.5 text-sm font-body truncate block w-full">{it.name || "—"}</span>
-                        </TableCell>
-                        <TableCell className="p-2 align-middle">
+                      </TableCell>
+                      <TableCell className="p-2 align-middle">
                           <span className="px-2 py-1.5 text-sm font-body truncate block w-full">{it.description || "—"}</span>
-                        </TableCell>
-                        <TableCell className="p-2 align-middle">
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
+                      </TableCell>
+                      <TableCell className="p-2 align-middle">
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
                               onClick={() => openView(it)}
-                              className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted/50 transition-colors"
-                              title="View"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </button>
-                            <button
-                              type="button"
+                            className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted/50 transition-colors"
+                            title="View"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
                               onClick={() => openEdit(it)}
-                              className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted/50 transition-colors"
-                              title="Edit"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </button>
-                            <button
-                              type="button"
+                            className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted/50 transition-colors"
+                            title="Edit"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
                               disabled={deletingId === it.id}
                               onClick={() => {
                                 setTeamToDelete(it);
                                 setDeleteDialogOpen(true);
                               }}
                               className="p-1.5 rounded-lg text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-colors disabled:opacity-60"
-                              title="Remove"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                            title="Remove"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
                     ))
                   )}
                 </TableBody>

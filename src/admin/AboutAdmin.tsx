@@ -28,11 +28,11 @@ type AboutFormState = {
 
 const emptyForm: AboutFormState = {
   story_title: "",
-  title: "",
-  content: "",
-  story: "",
-  mission: "",
-  vision: "",
+    title: "",
+    content: "",
+    story: "",
+    mission: "",
+    vision: "",
   workshopUrls: [],
   workshopFiles: [],
   workshopFilePreviews: [],
@@ -157,7 +157,7 @@ const AboutAdmin = () => {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-body hover:bg-muted/50 transition-colors"
             >
               {item ? "Update About" : "Create About"}
-            </button>
+                  </button>
           </div>
 
           <div className="border border-border rounded-lg overflow-hidden">
