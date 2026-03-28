@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { setOverrides, getOverride } from "@/lib/overrides";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, Edit, Eye } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit, Eye, Copy } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -26,6 +26,7 @@ type TeamMemberItem = {
   phone: string;
   bio: string;
   image?: string;
+  fileName?: string;
 };
 
 
@@ -65,6 +66,7 @@ function safeParseTeam(raw: string): TeamMemberItem[] | null {
         phone: typeof t?.phone === "string" ? t.phone : "",
         bio: typeof t?.bio === "string" ? t.bio : (typeof t?.address === "string" ? t.address : ""),
         image: typeof t?.image === "string" ? t.image : "",
+        fileName: typeof t?.fileName === "string" ? t.fileName : "",
       };
 
     });
@@ -77,6 +79,8 @@ function safeParseTeam(raw: string): TeamMemberItem[] | null {
 const TeamAdmin = () => {
   const [items, setItems] = useState<TeamMemberItem[]>(defaultTeam);
   const [saving, setSaving] = useState(false);
+  const [newImageFile, setNewImageFile] = useState<File | null>(null);
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
@@ -90,6 +94,7 @@ const TeamAdmin = () => {
     phone: "",
     bio: "",
     image: "",
+    fileName: "",
   });
 
 
@@ -114,27 +119,40 @@ const TeamAdmin = () => {
       email: "",
       phone: "",
       bio: "",
+      fileName: "",
     });
     setIsAddOpen(false);
   };
 
   const handleSetNewImageFromFile = (file: File | null) => {
+    setNewImageFile(file ?? null);
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
       const result = typeof reader.result === "string" ? reader.result : "";
-      setNewMember((prev) => ({ ...prev, image: result }));
+      setNewMember((prev) => ({ ...prev, image: result, fileName: prev.fileName || file.name }));
     };
     reader.readAsDataURL(file);
   };
 
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => toast.success("Copied!"));
+  };
+
   const handleSetEditImageFromFile = (file: File | null) => {
+    setEditImageFile(file ?? null);
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
       const result = typeof reader.result === "string" ? reader.result : "";
       if (editingMember) {
-        setEditingMember({ ...editingMember, image: result });
+        setEditingMember({ ...editingMember, image: result, fileName: editingMember.fileName || file.name });
       }
     };
     reader.readAsDataURL(file);
@@ -255,6 +273,41 @@ const TeamAdmin = () => {
                           {newMember.image ? (
                             <img src={newMember.image} alt="Preview" className="h-10 w-10 rounded border border-border object-cover" />
                           ) : null}
+                        </div>
+                        {newImageFile && (
+                          <div className="flex items-center gap-2 px-2 py-1.5 bg-muted/40 border border-border rounded-lg">
+                            <span className="text-xs font-body text-foreground truncate flex-1">
+                              <span className="font-medium">{newImageFile.name}</span>
+                              <span className="text-muted-foreground"> : {formatFileSize(newImageFile.size)}</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(newImageFile.name)}
+                              className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                              title="Copy file name"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-body font-medium">File Name</label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            value={newMember.fileName ?? ""}
+                            onChange={(e) => setNewMember({ ...newMember, fileName: e.target.value })}
+                            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                            placeholder="e.g. team-photo.jpg"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(newMember.fileName ?? "")}
+                            className="p-2 rounded-lg border border-border hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                            title="Copy file name"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </button>
                         </div>
                       </div>
                       <div className="space-y-2">
@@ -411,6 +464,41 @@ const TeamAdmin = () => {
                           {editingMember.image ? (
                             <img src={editingMember.image} alt="Preview" className="h-10 w-10 rounded border border-border object-cover" />
                           ) : null}
+                        </div>
+                        {editImageFile && (
+                          <div className="flex items-center gap-2 px-2 py-1.5 bg-muted/40 border border-border rounded-lg">
+                            <span className="text-xs font-body text-foreground truncate flex-1">
+                              <span className="font-medium">{editImageFile.name}</span>
+                              <span className="text-muted-foreground"> : {formatFileSize(editImageFile.size)}</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(editImageFile.name)}
+                              className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                              title="Copy file name"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-body font-medium">File Name</label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            value={editingMember.fileName ?? ""}
+                            onChange={(e) => setEditingMember({ ...editingMember, fileName: e.target.value })}
+                            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                            placeholder="e.g. team-photo.jpg"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(editingMember.fileName ?? "")}
+                            className="p-2 rounded-lg border border-border hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                            title="Copy file name"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </button>
                         </div>
                       </div>
                       <div className="space-y-2">

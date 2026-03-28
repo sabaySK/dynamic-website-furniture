@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { setOverrides, getOverride } from "@/lib/overrides";
 import { toast } from "sonner";
-import { Plus, Trash2, Edit, Eye } from "lucide-react";
+import { Plus, Trash2, Edit } from "lucide-react";
 import {
     Table,
     TableBody,
@@ -70,7 +70,6 @@ const CategoryAdmin = () => {
     const [saving, setSaving] = useState(false);
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
-    const [isViewOpen, setIsViewOpen] = useState(false);
 
     const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
@@ -82,7 +81,6 @@ const CategoryAdmin = () => {
     });
 
     const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null);
-    const [viewingCategory, setViewingCategory] = useState<CategoryItem | null>(null);
 
     useEffect(() => {
         const overrideItemsRaw = getOverride("admin.categories.items", "");
@@ -121,10 +119,6 @@ const CategoryAdmin = () => {
         setIsEditOpen(false);
     };
 
-    const openView = (index: number) => {
-        setViewingCategory(items[index]);
-        setIsViewOpen(true);
-    };
 
     const removeItem = (index: number) => {
         setItems((prev) => prev.filter((_, i) => i !== index));
@@ -267,14 +261,6 @@ const CategoryAdmin = () => {
                                                 <div className="flex items-center gap-1">
                                                     <button
                                                         type="button"
-                                                        onClick={() => openView(idx)}
-                                                        className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted/50 transition-colors"
-                                                        title="View"
-                                                    >
-                                                        <Eye className="h-4 w-4" />
-                                                    </button>
-                                                    <button
-                                                        type="button"
                                                         onClick={() => openEdit(idx)}
                                                         className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted/50 transition-colors"
                                                         title="Edit"
@@ -356,42 +342,7 @@ const CategoryAdmin = () => {
                                 </DialogContent>
                             </Dialog>
 
-                            {/* View Dialog */}
-                            <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-                                <DialogContent>
-                                    <DialogHeader>
-                                        <DialogTitle>View Category</DialogTitle>
-                                    </DialogHeader>
-                                    {viewingCategory && (
-                                        <div className="grid gap-4 py-4">
-                                            <div>
-                                                <p className="text-xs text-muted-foreground font-body">Name</p>
-                                                <p className="font-body text-sm font-medium">{viewingCategory.name}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs text-muted-foreground font-body">Slug</p>
-                                                <p className="font-body text-sm">{viewingCategory.slug || "—"}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs text-muted-foreground font-body">Status</p>
-                                                <p className="font-body text-sm">
-                                                    <span className={`inline-block w-2 h-2 rounded-full mr-2 ${viewingCategory.status === 'Active' ? 'bg-green-500' : 'bg-gray-400'}`} />
-                                                    {viewingCategory.status || "—"}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs text-muted-foreground font-body">Description</p>
-                                                <p className="font-body text-sm whitespace-pre-wrap">{viewingCategory.description || "—"}</p>
-                                            </div>
-                                        </div>
-                                    )}
-                                    <DialogFooter>
-                                        <button onClick={() => setIsViewOpen(false)} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-body hover:bg-primary/90 transition-colors">
-                                            Close
-                                        </button>
-                                    </DialogFooter>
-                                </DialogContent>
-                            </Dialog>
+
                         </div>
                     </div>
                 </div>

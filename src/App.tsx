@@ -44,6 +44,9 @@ import WhyChooseAdmin from "./admin/WhyChooseAdmin";
 import ValuesAdmin from "./admin/ValuesAdmin";
 import CertificationsAdmin from "./admin/CertificationsAdmin";
 import PoliciesAdmin from "./admin/PoliciesAdmin";
+import SizeAdmin from "./admin/SizeAdmin";
+import ColorAdmin from "./admin/ColorAdmin";
+import PostAdmin from "./admin/PostAdmin";
 import AdminLogin from "./admin/login";
 
 import { requestNotificationPermission } from "@/firebase-messaging.js";
@@ -136,6 +139,9 @@ const App = () => {
                             <Route path="values" element={<ValuesAdmin />} />
                             <Route path="certifications" element={<CertificationsAdmin />} />
                             <Route path="policies" element={<PoliciesAdmin />} />
+                            <Route path="sizes" element={<SizeAdmin />} />
+                            <Route path="colors" element={<ColorAdmin />} />
+                            <Route path="posts" element={<PostAdmin />} />
                           </Route>
                           <Route path="login" element={<AdminLogin />} />
                         </Routes>

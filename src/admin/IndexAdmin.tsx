@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { setOverrides, getOverride } from "@/lib/overrides";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, Edit, Eye } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit } from "lucide-react";
 import TestimonialsSection from "@/components/home/TestimonialsSection";
 import {
   Table,
@@ -72,7 +72,6 @@ const IndexAdmin = () => {
   const [saving, setSaving] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [isViewOpen, setIsViewOpen] = useState(false);
 
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
@@ -84,7 +83,6 @@ const IndexAdmin = () => {
   });
 
   const [editingCustomer, setEditingCustomer] = useState<TestimonialItem | null>(null);
-  const [viewingCustomer, setViewingCustomer] = useState<TestimonialItem | null>(null);
 
   useEffect(() => {
     const overrideItemsRaw = getOverride("index.testimonials.items", "");
@@ -132,10 +130,6 @@ const IndexAdmin = () => {
     setIsEditOpen(false);
   };
 
-  const openView = (index: number) => {
-    setViewingCustomer(items[index]);
-    setIsViewOpen(true);
-  };
 
   const updateItem = (index: number, patch: Partial<TestimonialItem>) => {
     setItems((prev) => prev.map((it, i) => (i === selectedIdx ? { ...it, ...patch } : it)));
@@ -294,14 +288,7 @@ const IndexAdmin = () => {
                       </TableCell>
                       <TableCell className="p-2 align-middle">
                         <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => openView(idx)}
-                            className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted/50 transition-colors"
-                            title="View"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
+
                           <button
                             type="button"
                             onClick={() => openEdit(idx)}
@@ -396,39 +383,7 @@ const IndexAdmin = () => {
                 </DialogContent>
               </Dialog>
 
-              {/* View Dialog */}
-              <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>View Customer</DialogTitle>
-                  </DialogHeader>
-                  {viewingCustomer && (
-                    <div className="grid gap-4 py-4">
-                      <div>
-                        <p className="text-xs text-muted-foreground font-body">Full Name</p>
-                        <p className="font-body text-sm font-medium">{viewingCustomer.fullName}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground font-body">Email</p>
-                        <p className="font-body text-sm">{viewingCustomer.email || "—"}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground font-body">Phone</p>
-                        <p className="font-body text-sm">{viewingCustomer.phone || "—"}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground font-body">Address</p>
-                        <p className="font-body text-sm whitespace-pre-wrap">{viewingCustomer.address || "—"}</p>
-                      </div>
-                    </div>
-                  )}
-                  <DialogFooter>
-                    <button onClick={() => setIsViewOpen(false)} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-body hover:bg-primary/90 transition-colors">
-                      Close
-                    </button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+
             </div>
           </div>
         </div>

@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Edit, Trash2, Eye, Image as ImageIcon } from "lucide-react";
+import { Plus, Edit, Trash2, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 
 interface Banner {
@@ -43,11 +43,9 @@ const BannerList = () => {
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [isViewOpen, setIsViewOpen] = useState(false);
 
   const [newBanner, setNewBanner] = useState<Banner>(emptyBanner);
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
-  const [viewingBanner, setViewingBanner] = useState<Banner | null>(null);
 
   useEffect(() => {
     loadBanners();
@@ -133,10 +131,6 @@ const BannerList = () => {
     toast.success("Banner updated");
   };
 
-  const startView = (b: Banner) => {
-    setViewingBanner(b);
-    setIsViewOpen(true);
-  };
 
   const remove = (id: string) => {
     if (confirm('Are you sure you want to delete this banner?')) {
@@ -204,14 +198,7 @@ const BannerList = () => {
                       </TableCell>
                       <TableCell className="p-2 align-middle">
                         <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => startView(b)}
-                            className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted/50 transition-colors"
-                            title="View"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
+
                           <button
                             type="button"
                             onClick={() => startEdit(b)}
@@ -439,47 +426,7 @@ const BannerList = () => {
         </DialogContent>
       </Dialog>
 
-      {/* View Dialog */}
-      <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-        <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>View Banner</DialogTitle>
-          </DialogHeader>
-          {viewingBanner && (
-            <div className="grid gap-4 py-4">
-              {viewingBanner.image && (
-                <div className="w-full h-48 rounded-lg overflow-hidden border border-border mb-2 relative">
-                  <img src={viewingBanner.image} alt={viewingBanner.name} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/40 flex flex-col justify-center items-center text-white p-6 text-center">
-                    <span className="text-sm uppercase tracking-widest">{viewingBanner.preTitle}</span>
-                    <h2 className="text-3xl font-display mt-2 mb-4">{viewingBanner.title}</h2>
-                    <p className="text-sm max-w-md">{viewingBanner.subtitle}</p>
-                  </div>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-muted-foreground font-body">Name</p>
-                  <p className="font-body text-sm font-medium">{viewingBanner.name}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground font-body">Page</p>
-                  <p className="font-body text-sm">{viewingBanner.page}</p>
-                </div>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground font-body">Image URL</p>
-                <p className="font-body text-sm break-all">{viewingBanner.image || "—"}</p>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <button onClick={() => setIsViewOpen(false)} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-body hover:bg-primary/90 transition-colors">
-              Close
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
     </div>
   );
 };

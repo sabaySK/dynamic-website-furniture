@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { setOverrides, getOverride } from "@/lib/overrides";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, Edit, Eye } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -57,7 +57,6 @@ const BrandsAdmin = () => {
   const [items, setItems] = useState<BrandItem[]>(defaultItems);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [isViewOpen, setIsViewOpen] = useState(false);
 
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
@@ -69,7 +68,6 @@ const BrandsAdmin = () => {
   });
 
   const [editingItem, setEditingItem] = useState<BrandItem | null>(null);
-  const [viewingItem, setViewingItem] = useState<BrandItem | null>(null);
 
   useEffect(() => {
     const overrideItemsRaw = getOverride("brands.data.items", "");
@@ -142,10 +140,6 @@ const BrandsAdmin = () => {
     toast.success("Brand updated");
   };
 
-  const openView = (index: number) => {
-    setViewingItem(items[index]);
-    setIsViewOpen(true);
-  };
 
   const removeItem = (index: number) => {
     const nextItems = items.filter((_, i) => i !== index);
@@ -286,14 +280,7 @@ const BrandsAdmin = () => {
                       </TableCell>
                       <TableCell className="p-2 align-middle">
                         <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => openView(idx)}
-                            className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted/50 transition-colors"
-                            title="View"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
+
                           <button
                             type="button"
                             onClick={() => openEdit(idx)}
@@ -390,51 +377,7 @@ const BrandsAdmin = () => {
                 </DialogContent>
               </Dialog>
 
-              {/* View Dialog */}
-              <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>View Brand</DialogTitle>
-                  </DialogHeader>
-                  {viewingItem && (
-                    <div className="grid gap-4 py-4 font-body">
-                      <div>
-                        <p className="text-xs text-muted-foreground font-body">Logo</p>
-                        {viewingItem.logo ? (
-                          <div className="mt-1 rounded-lg overflow-hidden border border-border w-16 h-16 flex items-center justify-center p-2">
-                            <img src={viewingItem.logo} className="max-w-full max-h-full object-contain" />
-                          </div>
-                        ) : (
-                          <p className="font-body text-sm">—</p>
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground font-body">Name</p>
-                        <p className="font-body text-sm font-semibold">{viewingItem.name}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground font-body">Description</p>
-                        <p className="font-body text-sm whitespace-pre-wrap">{viewingItem.description}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground font-body">Status</p>
-                        <span className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded-full inline-block ${viewingItem.status === "active" ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"}`}>
-                          {viewingItem.status}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  <DialogFooter>
-                    <button
-                      type="button"
-                      onClick={() => setIsViewOpen(false)}
-                      className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-body hover:bg-primary/90 transition-colors"
-                    >
-                      Close
-                    </button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarGroup, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger, SidebarGroupLabel } from "@/components/ui/sidebar";
-import { Quote, Image as ImageIcon, ShoppingBag, Settings, Phone, BookOpen, Users, HelpCircle, Heart, Award, LayoutDashboard, FileText } from "lucide-react";
+import { Quote, Image as ImageIcon, ShoppingBag, Settings, Phone, BookOpen, Users, HelpCircle, Heart, Award, LayoutDashboard, FileText, Ruler, Palette } from "lucide-react";
 import { NavUser } from "./NavUser";
 
 
@@ -14,6 +14,9 @@ const nav = [
   { to: "/admin/categories", label: "Categories", Icon: BookOpen },
   { to: "/admin/brands", label: "Brands", Icon: BookOpen },
   { to: "/admin/products", label: "Products", Icon: ShoppingBag },
+  { to: "/admin/sizes", label: "Sizes", Icon: Ruler },
+  { to: "/admin/colors", label: "Colors", Icon: Palette },
+  { to: "/admin/posts", label: "Posts", Icon: FileText },
   { to: "/admin/about", label: "About", Icon: Settings },
   { to: "/admin/team", label: "Team", Icon: Users },
   { to: "/admin/why-choose", label: "Why Choose Us", Icon: HelpCircle },
