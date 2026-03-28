@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   User,
   Package,
@@ -11,16 +11,23 @@ import {
   Trash2,
   Pencil,
   FileText,
+  LogOut,
 } from "lucide-react";
 import { useWishlist } from "@/context/WishlistContext";
 import { getProducts } from "@/lib/catalog";
-import { fetchProfile } from "@/services/authentication/profile.service";
+import { fetchProfile, updateProfile } from "@/services/authentication/profile.service";
+import { getSameOriginUploadUrl, isAuthenticated } from "@/services/api-config";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import ProductCard from "@/components/ProductCard";
+import RequireAuth from "@/components/auth/RequireAuth";
+import ConfirmDialog from "@/components/dialog/ConfirmDialog";
+import { logout } from "@/services/authentication/logout.service";
+import { changePassword } from "@/services/authentication/change-password.service";
+import UploadImage from "@/components/UploadImage";
 
 const STORAGE_PROFILE = "account_profile";
 const STORAGE_ADDRESSES = "account_addresses";
@@ -32,14 +39,13 @@ interface Profile {
   name: string;
   email: string;
   phone: string;
-  address?: string;
+  image?: string | null;
 }
 
 const STATIC_PROFILE: Profile = {
   name: "John Doe",
   email: "john.doe@example.com",
   phone: "012 345 678",
-  address: "123 Main Street, Phnom Penh, Cambodia",
 };
 
 interface SavedAddress {
@@ -109,6 +115,7 @@ const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
 ];
 
 const Account = () => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = (searchParams.get("tab") as TabId) || "profile";
   const setTab = (t: TabId) => setSearchParams({ tab: t });
@@ -119,18 +126,40 @@ const Account = () => {
   const [addresses, setAddresses] = useState<SavedAddress[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [passwordForm, setPasswordForm] = useState({ current: "", new: "", confirm: "" });
+  const [passwordSubmitting, setPasswordSubmitting] = useState(false);
   const [otpEmail, setOtpEmail] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileEditSnapshot, setProfileEditSnapshot] = useState<Profile | null>(null);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [logoutLoading, setLogoutLoading] = useState(false);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+
+  useEffect(() => {
+    if (!pendingImageFile) {
+      setImagePreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(pendingImageFile);
+    setImagePreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [pendingImageFile]);
 
   useEffect(() => {
     try {
       const p = localStorage.getItem(STORAGE_PROFILE);
       if (p) {
         try {
-          const parsed = JSON.parse(p);
+          const parsed = JSON.parse(p) as Partial<Profile>;
           if (parsed && (parsed.name || parsed.email || parsed.phone)) {
-            setProfile(parsed);
+            setProfile({
+              name: parsed.name ?? "",
+              email: parsed.email ?? "",
+              phone: parsed.phone ?? "",
+              image: parsed.image ?? null,
+            });
           }
         } catch {}
       }
@@ -148,38 +177,132 @@ const Account = () => {
       setOrders(STATIC_ORDERS);
     }
 
-    // fetch profile from API if available
+    // fetch profile from API only when client appears authenticated
     (async function loadProfile() {
+      if (!isAuthenticated()) {
+        // not logged in on client — skip protected API call and do not show error
+        return;
+      }
       try {
-        const res = await fetchProfile();
-        console.log("Profile API response:", res);
+        const res = await fetchProfile({ suppress401Redirect: true });
         const user = res?.user;
         if (user) {
-          const serverProfile: Profile = {
-            name: user.name ?? "",
-            email: user.email ?? "",
-            phone: user.phone ?? "",
-            address: user.address ?? "",
-          };
-          setProfile(serverProfile);
-          try {
-            localStorage.setItem(STORAGE_PROFILE, JSON.stringify(serverProfile));
-          } catch {}
+          setProfile((prev) => {
+            const next: Profile = {
+              ...prev,
+              name: user.name ?? "",
+              email: user.email ?? "",
+              phone: user.phone ?? "",
+              image: user.image != null ? getSameOriginUploadUrl(String(user.image)) : null,
+            };
+            try {
+              localStorage.setItem(STORAGE_PROFILE, JSON.stringify(next));
+            } catch {}
+            return next;
+          });
         } else {
           // API returned no user object
-          toast.error("Could not load profile from server");
+          // Do not show toast here — RequireAuth already handles unauthenticated UX
+          console.warn("Profile API returned no user");
         }
       } catch (err) {
         console.error("Error fetching profile:", err);
+        // Only show an error toast if the client had a token (i.e. we expected success)
         toast.error("Could not load profile from server");
       }
     })();
   }, []);
 
-  const saveProfile = () => {
-    localStorage.setItem(STORAGE_PROFILE, JSON.stringify(profile));
+  const beginEditProfile = () => {
+    setProfileEditSnapshot({ ...profile });
+    setPendingImageFile(null);
+    setIsEditingProfile(true);
+  };
+
+  const cancelEditProfile = () => {
+    if (profileEditSnapshot) {
+      setProfile(profileEditSnapshot);
+    }
+    setProfileEditSnapshot(null);
+    setPendingImageFile(null);
     setIsEditingProfile(false);
-    toast.success("Profile updated");
+  };
+
+  const clearProfilePhoto = () => {
+    if (pendingImageFile) {
+      setPendingImageFile(null);
+      return;
+    }
+    setProfile((p) => ({ ...p, image: null }));
+  };
+
+  const saveProfile = async () => {
+    if (!isAuthenticated()) {
+      if (pendingImageFile) {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = () => resolve(r.result as string);
+          r.onerror = () => reject(new Error("read failed"));
+          r.readAsDataURL(pendingImageFile);
+        });
+        setProfile((p) => {
+          const next = { ...p, image: dataUrl };
+          localStorage.setItem(STORAGE_PROFILE, JSON.stringify(next));
+          return next;
+        });
+      } else {
+        localStorage.setItem(STORAGE_PROFILE, JSON.stringify(profile));
+      }
+      setPendingImageFile(null);
+      setIsEditingProfile(false);
+      setProfileEditSnapshot(null);
+      toast.success("Profile saved locally");
+      return;
+    }
+    setSavingProfile(true);
+    try {
+      const res = await updateProfile(
+        pendingImageFile
+          ? {
+              name: profile.name,
+              email: profile.email,
+              phone: profile.phone?.trim() || null,
+              imageFile: pendingImageFile,
+            }
+          : {
+              name: profile.name,
+              email: profile.email,
+              phone: profile.phone?.trim() || null,
+              image: profile.image ?? null,
+            },
+        { suppress401Redirect: true }
+      );
+      const user = res.user;
+      if (user) {
+        setProfile((prev) => {
+          const next: Profile = {
+            ...prev,
+            name: user.name ?? "",
+            email: user.email ?? "",
+            phone: user.phone ?? "",
+            image: user.image != null ? getSameOriginUploadUrl(String(user.image)) : null,
+          };
+          localStorage.setItem(STORAGE_PROFILE, JSON.stringify(next));
+          return next;
+        });
+      } else {
+        localStorage.setItem(STORAGE_PROFILE, JSON.stringify(profile));
+      }
+      setPendingImageFile(null);
+      setProfileEditSnapshot(null);
+      setIsEditingProfile(false);
+      toast.success(res.message?.trim() || "Profile updated");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Could not update profile";
+      toast.error(msg);
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   const addAddress = (label: string, address: string, phone: string) => {
@@ -202,17 +325,39 @@ const Account = () => {
     toast.success("Address removed");
   };
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
+    if (!passwordForm.current.trim()) {
+      toast.error("Enter your current password");
+      return;
+    }
     if (passwordForm.new !== passwordForm.confirm) {
-      toast.error("Passwords do not match");
+      toast.error("New passwords do not match");
       return;
     }
-    if (passwordForm.new.length < 6) {
-      toast.error("Password must be at least 6 characters");
+    if (passwordForm.new.length < 8) {
+      toast.error("New password must be at least 8 characters");
       return;
     }
-    toast.success("Password updated successfully");
-    setPasswordForm({ current: "", new: "", confirm: "" });
+    if (!isAuthenticated()) {
+      toast.error("You must be signed in to change your password");
+      return;
+    }
+    setPasswordSubmitting(true);
+    try {
+      const res = (await changePassword({
+        current_password: passwordForm.current,
+        password: passwordForm.new,
+        password_confirmation: passwordForm.confirm,
+      })) as { message?: string };
+      const msg = typeof res?.message === "string" ? res.message.trim() : "";
+      toast.success(msg || "Password updated successfully");
+      setPasswordForm({ current: "", new: "", confirm: "" });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Could not update password";
+      toast.error(msg);
+    } finally {
+      setPasswordSubmitting(false);
+    }
   };
 
   const handleForgotPassword = () => {
@@ -224,9 +369,35 @@ const Account = () => {
     toast.success("OTP sent to your email");
   };
 
+  const handleLogout = async () => {
+    setLogoutLoading(true);
+    try {
+      await logout();
+      toast.success("Signed out");
+      navigate("/login", { replace: true });
+    } catch {
+      toast.error("Could not sign out");
+      throw new Error("logout failed");
+    } finally {
+      setLogoutLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen flex flex-col w-full">
-      <div className="flex-1 w-full px-4 py-8 lg:py-12 lg:px-8">
+    <RequireAuth>
+      <ConfirmDialog
+        open={logoutDialogOpen}
+        onOpenChange={setLogoutDialogOpen}
+        title="Sign out?"
+        description="You will need to sign in again to view your orders, wishlist, and profile."
+        confirmLabel="Log out"
+        cancelLabel="Stay signed in"
+        onConfirm={handleLogout}
+        destructive
+        loading={logoutLoading}
+      />
+      <div className="min-h-screen flex flex-col w-full">
+        <div className="flex-1 w-full px-4 py-8 lg:py-12 lg:px-8">
         <div className="w-full max-w-7xl mx-auto">
           <h1 className="font-display text-3xl font-semibold mb-8">My Account</h1>
 
@@ -251,6 +422,18 @@ const Account = () => {
                 </li>
               ))}
             </ul>
+            <div className="pt-6 mt-6 border-t border-border">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:border-destructive/30"
+                onClick={() => setLogoutDialogOpen(true)}
+                disabled={logoutLoading}
+              >
+                <LogOut className="h-4 w-4 shrink-0" />
+                Log out
+              </Button>
+            </div>
           </nav>
 
           {/* Content */}
@@ -259,7 +442,15 @@ const Account = () => {
               <div className="space-y-8 w-full">
                 {/* Profile header with avatar */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-6 pb-6 border-b border-border">
-                  <Avatar className="h-20 w-20 rounded-full border-2 border-primary/20 bg-primary/10">
+                <Avatar className="h-20 w-20 rounded-full border-2 border-primary/20 bg-primary/10 overflow-hidden">
+                  {imagePreviewUrl || profile.image ? (
+                    // eslint-disable-next-line jsx-a11y/img-redundant-alt
+                    <img
+                      src={imagePreviewUrl ?? (profile.image ? getSameOriginUploadUrl(profile.image) : "")}
+                      alt={`${profile.name} avatar`}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
                     <AvatarFallback className="text-xl font-display font-semibold text-primary">
                       {profile.name
                         ? profile.name
@@ -270,7 +461,8 @@ const Account = () => {
                             .toUpperCase()
                         : "U"}
                     </AvatarFallback>
-                  </Avatar>
+                  )}
+                </Avatar>
                   <div className="flex-1 min-w-0">
                     <h2 className="font-display text-2xl font-semibold tracking-tight">
                       {profile.name || "Profile"}
@@ -280,18 +472,20 @@ const Account = () => {
                     </p>
                     {!isEditingProfile ? (
                       <Button
-                        onClick={() => setIsEditingProfile(true)}
+                        onClick={beginEditProfile}
                         className="mt-4 gap-2"
                       >
                         <Pencil className="h-4 w-4" />
                         Edit Profile
                       </Button>
                     ) : (
-                      <div className="flex gap-2 mt-4">
-                        <Button variant="outline" onClick={() => setIsEditingProfile(false)}>
+                      <div className="flex flex-wrap gap-2 mt-4">
+                        <Button variant="outline" onClick={cancelEditProfile} disabled={savingProfile}>
                           Cancel
                         </Button>
-                        <Button onClick={saveProfile}>Save Changes</Button>
+                        <Button onClick={() => void saveProfile()} disabled={savingProfile}>
+                          {savingProfile ? "Saving…" : "Save Changes"}
+                        </Button>
                       </div>
                     )}
                   </div>
@@ -332,13 +526,15 @@ const Account = () => {
                           className="h-11 w-full"
                         />
                       </div>
-                      <div className="space-y-2 sm:col-span-2">
-                        <Label className="text-muted-foreground">Address</Label>
-                        <Input
-                          value={profile.address ?? ""}
-                          onChange={(e) => setProfile((p) => ({ ...p, address: e.target.value }))}
-                          placeholder="Your address"
-                          className="h-11 w-full"
+                      <div className="sm:col-span-2">
+                        <UploadImage
+                          label="Profile Photo"
+                          previewUrl={
+                            imagePreviewUrl ?? (profile.image ? getSameOriginUploadUrl(profile.image) : null)
+                          }
+                          onFileSelect={(file) => setPendingImageFile(file)}
+                          onRemove={clearProfilePhoto}
+                          disabled={savingProfile}
                         />
                       </div>
                     </div>
@@ -361,12 +557,6 @@ const Account = () => {
                           Phone
                         </p>
                         <p className="font-body font-medium">{profile.phone || "—"}</p>
-                      </div>
-                      <div className="rounded-lg bg-muted/50 px-4 py-3 border border-border/50 sm:col-span-2">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
-                          Address
-                        </p>
-                        <p className="font-body font-medium">{profile.address || "—"}</p>
                       </div>
                     </div>
                   )}
@@ -525,8 +715,13 @@ const Account = () => {
                         className="w-full"
                       />
                     </div>
-                    <Button onClick={handleChangePassword} className="w-full">
-                      Update Password
+                    <Button
+                      type="button"
+                      onClick={() => void handleChangePassword()}
+                      className="w-full"
+                      disabled={passwordSubmitting}
+                    >
+                      {passwordSubmitting ? "Updating…" : "Update Password"}
                     </Button>
                   </div>
                 </div>
@@ -577,6 +772,7 @@ const Account = () => {
         </div>
       </div>
     </div>
+    </RequireAuth>
   );
 };
 

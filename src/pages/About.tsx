@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Heart, Users, TreePine, Award, Star, ArrowRight, Target, CheckCircle2 } from "lucide-react";
 import aboutImage from "@/assets/about-workshop.jpg";
@@ -7,6 +8,8 @@ import productTable from "@/assets/product-table.jpg";
 import productChair from "@/assets/product-chair.jpg";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getOverride } from "@/lib/overrides";
+import aboutService, { AboutItem } from "@/services/about/about.service";
+import { fetchAboutBanners } from "@/services/banner/banner-about.service";
 
 const workshopPhotosDefault = [
   { src: aboutImage, alt: "Our workshop in Stockholm" },
@@ -58,16 +61,67 @@ const certifications = [
 ];
 
 const About = () => {
-  const workshopImagesRaw = getOverride("about.workshop.images", "");
-  let workshopPhotos = workshopPhotosDefault;
-  if (workshopImagesRaw) {
-    try {
-      const parsed = JSON.parse(workshopImagesRaw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        workshopPhotos = parsed.map((img, i) => ({ src: img, alt: `Workshop photo ${i + 1}` }));
+  const [about, setAbout] = useState<AboutItem | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const data = await aboutService.fetchAbout();
+        if (mounted) setAbout(data);
+      } catch (err) {
+        console.error("Failed to load about:", err);
       }
-    } catch (e) {}
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+  // fetch about page hero banner separately
+  const [aboutBanner, setAboutBanner] = useState<any | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetchAboutBanners();
+        const first = res?.list && res.list.length > 0 ? res.list[0] : null;
+        if (mounted) setAboutBanner(first);
+      } catch (err) {
+        // ignore
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+  // Prefer API-provided workshop images when available, then admin overrides, then defaults.
+  let workshopPhotos = workshopPhotosDefault;
+
+  if (about?.workshop_image && Array.isArray(about.workshop_image) && about.workshop_image.length > 0) {
+    workshopPhotos = about.workshop_image.map((src, i) => ({ src, alt: `Workshop photo ${i + 1}` }));
+  } else {
+    const workshopImagesRaw = getOverride("about.workshop.images", "");
+    if (workshopImagesRaw) {
+      try {
+        const parsed = JSON.parse(workshopImagesRaw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          workshopPhotos = parsed.map((img, i) => ({ src: img, alt: `Workshop photo ${i + 1}` }));
+        }
+      } catch (e) {
+        // ignore parse errors and keep defaults
+      }
+    }
   }
+  // Prefer API team when available, otherwise fall back to static team
+  const teamMembers = (about?.team && Array.isArray(about.team) && about.team.length > 0) ? about.team : team;
+
+  const getInitials = (name?: string, fallback?: string) => {
+    if (fallback) return fallback;
+    if (!name) return "";
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  };
 
   return (
 
@@ -75,7 +129,7 @@ const About = () => {
       {/* Hero */}
       <section className="relative h-[50vh] min-h-[400px] flex items-center overflow-hidden">
         <img
-          src={getOverride("about.banner.image", aboutImage)}
+          src={aboutBanner?.image ?? getOverride("about.banner.image", aboutImage)}
           alt="NØRD workshop"
           className="absolute inset-0 w-full h-full object-cover"
         />
@@ -86,10 +140,10 @@ const About = () => {
             animate={{ opacity: 1, y: 0 }}
           >
             <p className="text-primary-foreground/70 font-body text-sm uppercase tracking-[0.2em] mb-3">
-              {getOverride("about.banner.preTitle", "Our Story")}
+              {aboutBanner?.subtitle ?? getOverride("about.banner.preTitle", "Our Story")}
             </p>
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-primary-foreground">
-              {getOverride("about.banner.title", "Made with Purpose")}
+              {aboutBanner?.title ?? getOverride("about.banner.title", "Made with Purpose")}
             </h1>
           </motion.div>
         </div>
@@ -100,9 +154,9 @@ const About = () => {
         <div className="container mx-auto px-4 lg:px-8">
           <div className="text-center mb-12">
             <p className="text-primary font-body text-sm uppercase tracking-[0.15em] mb-2">
-              About Us
+              {about?.title ?? "About Us"}
             </p>
-            <h2 className="font-display text-3xl md:text-4xl font-semibold">Company Story</h2>
+            <h2 className="font-display text-3xl md:text-4xl font-semibold">{about?.story_title ?? "Company Story"}</h2>
           </div>
           <div className="max-w-3xl mx-auto text-center">
             <motion.div
@@ -111,10 +165,10 @@ const About = () => {
               viewport={{ once: true }}
             >
               <h3 className="font-display text-2xl font-semibold mb-6">
-                Born in Stockholm. Designed for the World.
+                {about?.content ?? "Born in Stockholm. Designed for the World."}
               </h3>
               <p className="text-muted-foreground font-body text-lg leading-relaxed mb-6 whitespace-pre-line">
-                {getOverride("about.story.content", "NØRD was founded in 2018 with a simple belief: furniture should be honest. Honest materials, honest craftsmanship, honest design. We work directly with skilled artisans across Scandinavia to create pieces that are both beautiful and built to last generations.")}
+                {about?.story ?? getOverride("about.story.content", "NØRD was founded in 2018 with a simple belief: furniture should be honest. Honest materials, honest craftsmanship, honest design. We work directly with skilled artisans across Scandinavia to create pieces that are both beautiful and built to last generations.")}
               </p>
 
             </motion.div>
@@ -132,7 +186,17 @@ const About = () => {
               viewport={{ once: true }}
             >
               <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 overflow-hidden">
-                {getOverride("about.mission.icon", "") ? (
+                {/*
+                  Prefer an API-provided mission icon when available; fall back to override or the default icon.
+                  Some APIs return mission icon as `mission_icon` or under a nested object; we try common keys.
+                */}
+                {about?.mission_icon || (about as any)?.mission?.icon ? (
+                  <img
+                    src={(about?.mission_icon ?? (about as any).mission?.icon) as string}
+                    alt="Mission Icon"
+                    className="w-full h-full object-cover"
+                  />
+                ) : getOverride("about.mission.icon", "") ? (
                   <img src={getOverride("about.mission.icon", "")} alt="Mission Icon" className="w-full h-full object-cover" />
                 ) : (
                   <Target className="h-7 w-7 text-primary" />
@@ -144,7 +208,7 @@ const About = () => {
               </p>
               <h2 className="font-display text-3xl md:text-4xl font-semibold mb-6">Our Mission</h2>
               <p className="text-muted-foreground font-body text-lg leading-relaxed whitespace-pre-line">
-                {getOverride("about.mission.content", "To create furniture that lasts generations—beautiful, honest, and made with care. We believe every home deserves pieces that tell a story and age with grace. By working directly with artisans and using sustainable materials, we bring Scandinavian craftsmanship to the world while protecting the planet for future generations.")}
+                {about?.mission ?? getOverride("about.mission.content", "To create furniture that lasts generations—beautiful, honest, and made with care. We believe every home deserves pieces that tell a story and age with grace. By working directly with artisans and using sustainable materials, we bring Scandinavian craftsmanship to the world while protecting the planet for future generations.")}
               </p>
 
             </motion.div>
@@ -194,7 +258,7 @@ const About = () => {
             <h2 className="font-display text-3xl md:text-4xl font-semibold">Our Team</h2>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
-            {team.map((member, i) => (
+              {teamMembers.map((member: any, i) => (
               <motion.div
                 key={member.name}
                 initial={{ opacity: 0, y: 15 }}
@@ -203,13 +267,17 @@ const About = () => {
                 transition={{ delay: i * 0.1 }}
                 className="text-center"
               >
-                <Avatar className="h-20 w-20 mx-auto mb-4 border-2 border-primary/20">
-                  <AvatarFallback className="bg-primary/10 text-primary font-display font-semibold text-lg">
-                    {member.initials}
-                  </AvatarFallback>
+                <Avatar className="h-20 w-20 mx-auto mb-4 border-2 border-primary/20 overflow-hidden">
+                  {((member as any).avatar || (member as any).image) ? (
+                    <img src={(member as any).avatar ?? (member as any).image} alt={member.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <AvatarFallback className="bg-primary/10 text-primary font-display font-semibold text-lg">
+                      {getInitials(member.name, (member as any).initials)}
+                    </AvatarFallback>
+                  )}
                 </Avatar>
                 <h3 className="font-display font-semibold">{member.name}</h3>
-                <p className="text-sm text-muted-foreground font-body">{member.role}</p>
+                <p className="text-sm text-muted-foreground font-body">{(member as any).role ?? (member as any).description}</p>
               </motion.div>
             ))}
           </div>
@@ -226,19 +294,37 @@ const About = () => {
             <h2 className="font-display text-3xl md:text-4xl font-semibold">Why Choose Us</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {whyChooseUs.map((item, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: -10 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08 }}
-                className="flex items-start gap-4 p-4 rounded-xl bg-card border border-border"
-              >
-                <CheckCircle2 className="h-6 w-6 text-primary shrink-0 mt-0.5" />
-                <p className="font-body text-sm text-foreground">{item}</p>
-              </motion.div>
-            ))}
+            {(() => {
+              const whyItems = (about?.why_choose && Array.isArray(about.why_choose) && about.why_choose.length > 0)
+                ? about.why_choose
+                : whyChooseUs;
+
+              return whyItems.map((item: any, i: number) => {
+                const content = typeof item === "string" ? item : item.content ?? "";
+                const iconUrl = typeof item === "object" ? item.icon : undefined;
+                return (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -10 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.08 }}
+                    className="flex items-start gap-4 p-4 rounded-xl bg-card border border-border"
+                  >
+                    {iconUrl ? (
+                      <div className="w-8 h-8 flex-shrink-0 mt-0.5 bg-primary/10 rounded-full flex items-center justify-center overflow-hidden">
+                        <img src={iconUrl} alt={`why-choose-${i}`} className="w-5 h-5 object-contain" />
+                      </div>
+                    ) : (
+                      <div className="w-8 h-8 flex-shrink-0 mt-0.5 bg-primary/10 rounded-full flex items-center justify-center">
+                        <CheckCircle2 className="h-5 w-5 text-primary" />
+                      </div>
+                    )}
+                    <p className="font-body text-sm text-foreground">{content}</p>
+                  </motion.div>
+                );
+              });
+            })()}
           </div>
         </div>
       </section>
@@ -283,24 +369,43 @@ const About = () => {
             <h2 className="font-display text-3xl md:text-4xl font-semibold">Our Values</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {values.map((v, i) => (
-              <motion.div
-                key={v.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.15 }}
-                className="text-center p-8"
-              >
-                <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-5">
-                  <v.icon className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="font-display text-xl font-semibold mb-3">{v.title}</h3>
-                <p className="text-muted-foreground font-body text-sm leading-relaxed">
-                  {v.desc}
-                </p>
-              </motion.div>
-            ))}
+            {(() => {
+              const valueItems = (about?.our_values && Array.isArray(about.our_values) && about.our_values.length > 0)
+                ? about.our_values
+                : values;
+
+              return valueItems.map((v: any, i: number) => {
+                const title = v.title ?? v.title;
+                const desc = v.description ?? v.desc;
+                const iconUrl = typeof v.icon === "string" ? v.icon : undefined;
+                const IconComp = typeof v.icon === "function" ? v.icon : undefined;
+
+                return (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.15 }}
+                    className="text-center p-8"
+                  >
+                    <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-5 overflow-hidden">
+                      {iconUrl ? (
+                        <img src={iconUrl} alt={`value-${i}`} className="w-8 h-8 object-contain" />
+                      ) : IconComp ? (
+                        <IconComp className="h-6 w-6 text-primary" />
+                      ) : (
+                        <Heart className="h-6 w-6 text-primary" />
+                      )}
+                    </div>
+                    <h3 className="font-display text-xl font-semibold mb-3">{title}</h3>
+                    <p className="text-muted-foreground font-body text-sm leading-relaxed">
+                      {desc}
+                    </p>
+                  </motion.div>
+                );
+              });
+            })()}
           </div>
         </div>
       </section>
@@ -317,20 +422,37 @@ const About = () => {
             </h2>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
-            {certifications.map((cert, i) => (
-              <motion.div
-                key={cert.name}
-                initial={{ opacity: 0, y: 15 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="bg-card rounded-xl p-6 text-center border border-border"
-              >
-                <Award className="h-8 w-8 text-primary mx-auto mb-3" />
-                <h4 className="font-display text-sm font-semibold mb-1">{cert.name}</h4>
-                <p className="text-xs text-muted-foreground font-body">{cert.desc}</p>
-              </motion.div>
-            ))}
+            {(() => {
+              const certItems = (about?.certifications && Array.isArray(about.certifications) && about.certifications.length > 0)
+                ? about.certifications
+                : certifications.map((c) => ({ title: c.name, description: c.desc }));
+
+              return certItems.map((cert: any, i: number) => {
+                const title = cert.title ?? cert.name ?? cert.title;
+                const desc = cert.description ?? cert.desc ?? cert.description;
+                const iconUrl = cert.icon;
+                return (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 15 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.1 }}
+                    className="bg-card rounded-xl p-6 text-center border border-border"
+                  >
+                    {iconUrl ? (
+                      <div className="mx-auto mb-3 w-12 h-12 flex items-center justify-center">
+                        <img src={iconUrl} alt={title} className="w-10 h-10 object-contain" />
+                      </div>
+                    ) : (
+                      <Award className="h-8 w-8 text-primary mx-auto mb-3" />
+                    )}
+                    <h4 className="font-display text-sm font-semibold mb-1">{title}</h4>
+                    <p className="text-xs text-muted-foreground font-body">{desc}</p>
+                  </motion.div>
+                );
+              });
+            })()}
           </div>
         </div>
       </section>

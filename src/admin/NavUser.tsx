@@ -29,15 +29,18 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { fetchProfile, ProfileUser } from "@/services/authentication/profile.service";
-import { logout } from "@/services/authentication/logout.service";
+import { fetchProfile, ProfileUser } from "@/services/admin-service/authentication/profile.service";
+import { logout } from "@/services/admin-service/authentication/logout.service";
 import { toast } from "sonner";
+import ConfirmDialog from "@/components/dialog/ConfirmDialog";
 
 export function NavUser() {
   const { isMobile } = useSidebar();
   const navigate = useNavigate();
   const [user, setUser] = useState<ProfileUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+  const [logoutSubmitting, setLogoutSubmitting] = useState(false);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -57,12 +60,15 @@ export function NavUser() {
   }, []);
 
   const handleLogout = async () => {
+    setLogoutSubmitting(true);
     try {
       await logout();
       toast.success("Logged out successfully");
       navigate("/admin/login");
     } catch (error) {
       toast.error("Logout failed");
+    } finally {
+      setLogoutSubmitting(false);
     }
   };
 
@@ -86,6 +92,17 @@ export function NavUser() {
 
   return (
     <SidebarMenu>
+      <ConfirmDialog
+        open={logoutDialogOpen}
+        onOpenChange={setLogoutDialogOpen}
+        title="Sign out?"
+        description="You will need to sign in again to access the admin panel."
+        confirmLabel="Log out"
+        cancelLabel="Cancel"
+        onConfirm={handleLogout}
+        destructive
+        loading={logoutSubmitting}
+      />
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -149,7 +166,10 @@ export function NavUser() {
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-red-600 focus:text-red-600 cursor-pointer" onClick={handleLogout}>
+            <DropdownMenuItem
+              className="text-red-600 focus:text-red-600 cursor-pointer"
+              onClick={() => setLogoutDialogOpen(true)}
+            >
               <LogOut className="mr-2 size-4" />
               Log out
             </DropdownMenuItem>

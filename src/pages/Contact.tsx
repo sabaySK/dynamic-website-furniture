@@ -1,77 +1,105 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Mail, Phone, MapPin, Send } from "lucide-react";
+import Loading from "@/components/ui/loading";
 import { toast } from "sonner";
 import contactBanner from "@/assets/contact-banner.jpg";
 import { getOverride } from "@/lib/overrides";
+import contactService, { ContactItem as ServiceContactItem } from "@/services/contact/contact.service";
+import contactMessageService from "@/services/contact/contact-message.service";
+import { formatPhoneNumber, toTelHref } from "@/lib/phone-number";
+import { fetchContactBanners } from "@/services/banner/banner-contact.service";
 const MAP_EMBED_URL =
   "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2032.787729387499!2d18.0686!3d59.3293!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x465f9d679c74d4a%3A0x9e0ef4c9a5a5a5a5!2sBirger%20Jarlsgatan%2C%20Stockholm%2C%20Sweden!5e0!3m2!1sen!2sse!4v1709769600000";
 
-type ContactItem = {
-  company_name: string;
-  phone: string;
-  email: string;
-  address: string;
-  lat: string;
-  lang: string;
-  social_media: {
-    facebook: string;
-    instagram: string;
-    telegram: string;
-  };
-  working_hours: string;
-};
+type ContactItem = ServiceContactItem;
 
 const Contact = () => {
-  const [form, setForm] = useState({ name: "", email: "", message: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", message: "" });
+  const [contacts, setContacts] = useState<ContactItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const getContacts = (): ContactItem[] => {
-    const raw = getOverride("admin.contact.items", "");
-    try {
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+  // Load contact data from API and normalize to an array
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const c = await contactService.fetchContact();
+        const arr = Array.isArray(c) ? c : [c];
+        if (mounted) setContacts(arr);
+      } catch (err) {
+        console.error("Failed to load contact:", err);
+      } finally {
+        if (mounted) setLoading(false);
       }
-    } catch (e) {
-      console.error("Error parsing contact items:", e);
-    }
-    
-    return [{
-      company_name: "NORD Showroom",
-      phone: "+1 (555) 123-4567",
-      email: "hello@nord-furniture.com",
-      address: "Birger Jarlsgatan 12, 114 34 Stockholm, Sweden",
-      lat: "59.3293",
-      lang: "18.0686",
-      social_media: {
-        facebook: "https://facebook.com/nord",
-        instagram: "https://instagram.com/nord",
-        telegram: "https://t.me/nord"
-      },
-      working_hours: "Mon-Sat 10:00-18:00"
-    }];
-  };
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
-  const contacts = getContacts();
+  const [contactBannerData, setContactBannerData] = useState<any | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetchContactBanners();
+        const first = res?.list && res.list.length > 0 ? res.list[0] : null;
+        if (mounted) setContactBannerData(first);
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !form.email.trim() || !form.message.trim()) {
       toast.error("Please fill all fields");
       return;
     }
-    toast.success("Message sent! We'll get back to you soon.");
-    setForm({ name: "", email: "", message: "" });
+
+    setSubmitting(true);
+    try {
+      await contactMessageService.sendContactMessage({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim() || undefined,
+        message: form.message.trim(),
+      });
+      toast.success("Message sent! We'll get back to you soon.");
+      setForm({ name: "", email: "", phone: "", message: "" });
+    } catch (err: any) {
+      console.error("Send contact message failed:", err);
+      const msg = err?.message || err?.error || "Failed to send message. Please try again.";
+      toast.error(msg);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const mainContact = contacts[0];
+  const mapSrc = (() => {
+    if (mainContact && mainContact.lat != null && mainContact.lang != null) {
+      const lat = encodeURIComponent(String(mainContact.lat));
+      const lng = encodeURIComponent(String(mainContact.lang));
+      return `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`;
+    }
+    return MAP_EMBED_URL;
+  })();
 
   return (
     <div className="min-h-screen">
       {/* Banner Header */}
       <section className="relative h-[45vh] md:h-[55vh] overflow-hidden">
         <img
-          src={getOverride("contact.banner.image", contactBanner)}
+          src={contactBannerData?.image ?? getOverride("contact.banner.image", contactBanner)}
           alt="Nord Furniture showroom"
           className="w-full h-full object-cover"
         />
@@ -83,10 +111,10 @@ const Contact = () => {
             className="text-center"
           >
             <p className="text-primary font-body text-sm uppercase tracking-[0.15em] mb-2">
-              {getOverride("contact.banner.preTitle", "We'd Love to Hear From You")}
+              {contactBannerData?.title ?? getOverride("contact.banner.preTitle", "We'd Love to Hear From You")}
             </p>
             <h1 className="font-display text-4xl md:text-5xl font-semibold">
-              {getOverride("contact.banner.title", "Contact Us")}
+              {contactBannerData?.subtitle ?? getOverride("contact.banner.title", "Contact Us")}
             </h1>
           </motion.div>
         </div>
@@ -125,6 +153,18 @@ const Contact = () => {
                 />
               </div>
               <div>
+                <label className="block font-body text-sm font-medium mb-2">Phone (optional)</label>
+                <input
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  className="w-full bg-card border border-border rounded-lg px-4 py-3 font-body text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none transition-colors"
+                  placeholder="012345678"
+                  maxLength={30}
+                />
+              </div>
+
+              <div>
                 <label className="block font-body text-sm font-medium mb-2">Message</label>
                 <textarea
                   value={form.message}
@@ -137,10 +177,12 @@ const Contact = () => {
               </div>
               <button
                 type="submit"
-                className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-8 py-3 rounded-lg font-body font-medium text-sm hover:bg-primary/90 transition-colors"
+                disabled={submitting}
+                className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-8 py-3 rounded-lg font-body font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-60"
+                aria-busy={submitting}
               >
-                <Send className="h-4 w-4" />
-                Send Message
+                {submitting ? <Loading size={16} className="text-primary" label="Sending" /> : <Send className="h-4 w-4" />}
+                {submitting ? "Sending..." : "Send Message"}
               </button>
             </form>
           </motion.div>
@@ -187,7 +229,7 @@ const Contact = () => {
                       <Phone className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
                       <div>
                         <p className="text-xs font-medium uppercase text-muted-foreground mb-1">Phone</p>
-                        <a href={`tel:${contact.phone.replace(/\s/g, "")}`} className="text-sm font-body hover:text-primary transition-colors">{contact.phone}</a>
+                        <a href={contact.phone ? `tel:${toTelHref(contact.phone)}` : "#"} className="text-sm font-body hover:text-primary transition-colors">{contact.phone ? formatPhoneNumber(contact.phone) : "—"}</a>
                       </div>
                     </div>
 
@@ -231,7 +273,7 @@ const Contact = () => {
           <div className="rounded-xl overflow-hidden border border-border aspect-video w-full">
             <iframe
               title="NØRD Showroom Location"
-              src={MAP_EMBED_URL}
+              src={mapSrc}
               width="100%"
               height="100%"
               style={{ border: 0 }}

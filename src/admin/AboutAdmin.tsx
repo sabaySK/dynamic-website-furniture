@@ -1,295 +1,146 @@
-import { useState, useEffect } from "react";
-import { setOverrides, getOverride } from "@/lib/overrides";
+import { useEffect, useState } from "react";
+import { Edit, Eye } from "lucide-react";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, Edit, Eye, Upload, X } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import Loading from "@/components/ui/loading";
+import Empty from "@/components/ui/empty";
+import PreviewImage from "@/components/ui/preview-image";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import UploadImage from "@/components/UploadImage";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import aboutImage from "@/assets/about-workshop.jpg";
+  fetchAdminAbout,
+  upsertAdminAbout,
+  type AdminAboutItem,
+} from "@/services/admin-service/about-us/about-us.service";
 
-type AboutItem = {
+type AboutFormState = {
+  story_title: string;
   title: string;
   content: string;
   story: string;
   mission: string;
   vision: string;
-  image: string; // Banner Image
-  mission_icon: string;
-  workshop_images: string[];
+  workshopUrls: string[];
+  workshopFiles: File[];
+  workshopFilePreviews: string[];
 };
 
-
-const defaultAbout: AboutItem[] = [
-  {
-    title: "Our Story",
-    content: "Made with Purpose",
-    story: "NØRD was founded in 2018 with a simple belief: furniture should be honest. Honest materials, honest craftsmanship, honest design. We work directly with skilled artisans across Scandinavia to create pieces that are both beautiful and built to last generations.",
-    mission: "To create furniture that lasts generations—beautiful, honest, and made with care. We believe every home deserves pieces that tell a story and age with grace.",
-    vision: "By working directly with artisans and using sustainable materials, we bring Scandinavian craftsmanship to the world while protecting the planet for future generations.",
-    image: aboutImage,
-    mission_icon: "",
-    workshop_images: [],
-  }
-];
-
-
-function safeParseAbout(raw: string): AboutItem[] | null {
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return null;
-    return parsed.map((it: any) => ({
-      title: it?.title || "",
-      content: it?.content || "",
-      story: it?.story || "",
-      mission: it?.mission || "",
-      vision: it?.vision || "",
-      image: it?.image || aboutImage,
-      mission_icon: it?.mission_icon || "",
-      workshop_images: Array.isArray(it?.workshop_images) ? it.workshop_images : [],
-    }));
-
-  } catch {
-    return null;
-  }
-}
-
-const AboutAdmin = () => {
-  const [items, setItems] = useState<AboutItem[]>(defaultAbout);
-  const [saving, setSaving] = useState(false);
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [isViewOpen, setIsViewOpen] = useState(false);
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
-
-  const [newItem, setNewItem] = useState<AboutItem>({
+const emptyForm: AboutFormState = {
+  story_title: "",
     title: "",
     content: "",
     story: "",
     mission: "",
     vision: "",
-    image: aboutImage,
-    mission_icon: "",
-    workshop_images: [],
-  });
+  workshopUrls: [],
+  workshopFiles: [],
+  workshopFilePreviews: [],
+};
 
-
-
-  const [editingItem, setEditingItem] = useState<AboutItem | null>(null);
-  const [viewingItem, setViewingItem] = useState<AboutItem | null>(null);
+const AboutAdmin = () => {
+  const [item, setItem] = useState<AdminAboutItem | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<AboutFormState>(emptyForm);
 
   useEffect(() => {
-    const raw = getOverride("about.data.items", "");
-    const parsed = raw ? safeParseAbout(raw) : null;
-    setItems(parsed ?? defaultAbout);
-  }, []);
-
-  const handleImageUpload = (file: File | null, isNew: boolean, type: "banner" | "mission" | "workshop") => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === "string" ? reader.result : "";
-      if (isNew) {
-        if (type === "banner") setNewItem(prev => ({ ...prev, image: result }));
-        else if (type === "mission") setNewItem(prev => ({ ...prev, mission_icon: result }));
-        else setNewItem(prev => ({ ...prev, workshop_images: [...prev.workshop_images, result] }));
-      } else if (editingItem) {
-        if (type === "banner") setEditingItem({ ...editingItem, image: result });
-        else if (type === "mission") setEditingItem({ ...editingItem, mission_icon: result });
-        else setEditingItem({ ...editingItem, workshop_images: [...editingItem.workshop_images, result] });
+    const loadAbout = async () => {
+      setLoading(true);
+      try {
+        const res = await fetchAdminAbout({ suppress401Redirect: true });
+        setItem(res);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Failed to fetch about data";
+        toast.error(msg);
+      } finally {
+        setLoading(false);
       }
     };
-    reader.readAsDataURL(file);
-  };
+    void loadAbout();
+  }, []);
 
-
-  const removeWorkshopImage = (idx: number, isNew: boolean) => {
-    if (isNew) {
-      setNewItem(prev => ({ ...prev, workshop_images: prev.workshop_images.filter((_, i) => i !== idx) }));
-    } else if (editingItem) {
-      setEditingItem({ ...editingItem, workshop_images: editingItem.workshop_images.filter((_, i) => i !== idx) });
-    }
-  };
-
-  const handleAddSubmit = () => {
-    if (!newItem.title.trim() || !newItem.content.trim()) {
-      toast.error("Title and Content are required.");
-      return;
-    }
-    setItems(prev => [...prev, newItem]);
-    setNewItem({
-      title: "",
-      content: "",
-      story: "",
-      mission: "",
-      vision: "",
-      image: aboutImage,
-      mission_icon: "",
-      workshop_images: [],
-    });
-
-    setIsAddOpen(false);
-  };
-
-  const handleEditSubmit = () => {
-    if (selectedIdx === null || !editingItem) return;
-    setItems(prev => prev.map((it, i) => (i === selectedIdx ? editingItem : it)));
-    setIsEditOpen(false);
-  };
-
-  const openEdit = (idx: number) => {
-    setSelectedIdx(idx);
-    setEditingItem({ ...items[idx] });
-    setIsEditOpen(true);
-  };
-
-  const openView = (idx: number) => {
-    setViewingItem(items[idx]);
-    setIsViewOpen(true);
-  };
-
-  const removeItem = (idx: number) => {
-    setItems(prev => prev.filter((_, i) => i !== idx));
-  };
-
-  const save = () => {
-    setSaving(true);
-    // Compatibility: Also set individual overrides for the first item
-    if (items.length > 0) {
-      const main = items[0];
-      setOverrides({
-        "about.data.items": JSON.stringify(items),
-        "about.banner.preTitle": main.title,
-        "about.banner.title": main.content,
-        "about.story.content": main.story,
-        "about.mission.content": main.mission,
-        "about.mission.icon": main.mission_icon,
-        "about.vision.content": main.vision,
-        "about.banner.image": main.image,
-        "about.workshop.images": JSON.stringify(main.workshop_images),
+  useEffect(() => {
+    return () => {
+      form.workshopFilePreviews.forEach((url) => {
+        if (url.startsWith("blob:")) URL.revokeObjectURL(url);
       });
+    };
+  }, [form.workshopFilePreviews]);
 
-    } else {
-      setOverrides({ "about.data.items": "[]" });
-    }
-
-    setTimeout(() => {
-      setSaving(false);
-      toast.success("About sections updated");
-    }, 600);
+  const openUpsertModal = () => {
+    const next: AboutFormState = item
+      ? {
+          story_title: item.story_title ?? "",
+          title: item.title ?? "",
+          content: item.content ?? "",
+          story: item.story ?? "",
+          mission: item.mission ?? "",
+          vision: item.vision ?? "",
+          workshopUrls: [...(item.workshop_image ?? [])],
+          workshopFiles: [],
+          workshopFilePreviews: [],
+        }
+      : { ...emptyForm };
+    setForm(next);
+    setIsFormOpen(true);
   };
 
-  const FormFields = ({ data, setData, isNew }: { data: AboutItem, setData: (d: AboutItem) => void, isNew: boolean }) => (
-    <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto px-1">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <label className="text-xs font-body font-medium">Banner Pre-Title*</label>
-          <input
-            value={data.title}
-            onChange={(e) => setData({ ...data, title: e.target.value })}
-            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
-            placeholder="Our Story"
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="text-xs font-body font-medium">Banner Title*</label>
-          <input
-            value={data.content}
-            onChange={(e) => setData({ ...data, content: e.target.value })}
-            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
-            placeholder="Made with Purpose"
-          />
-        </div>
-      </div>
+  const onPickWorkshopFile = (file: File) => {
+    const preview = URL.createObjectURL(file);
+    setForm((prev) => ({
+      ...prev,
+      workshopFiles: [...prev.workshopFiles, file],
+      workshopFilePreviews: [...prev.workshopFilePreviews, preview],
+    }));
+  };
 
-      <div className="space-y-2">
-        <label className="text-xs font-body font-medium">Company Story</label>
-        <textarea
-          value={data.story}
-          onChange={(e) => setData({ ...data, story: e.target.value })}
-          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none resize-none"
-          rows={3}
-        />
-      </div>
+  const removeWorkshopUrl = (idx: number) => {
+    setForm((prev) => ({
+      ...prev,
+      workshopUrls: prev.workshopUrls.filter((_, i) => i !== idx),
+    }));
+  };
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <label className="text-xs font-body font-medium">Mission</label>
-          <textarea
-            value={data.mission}
-            onChange={(e) => setData({ ...data, mission: e.target.value })}
-            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none resize-none"
-            rows={2}
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="text-xs font-body font-medium">Vision</label>
-          <textarea
-            value={data.vision}
-            onChange={(e) => setData({ ...data, vision: e.target.value })}
-            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none resize-none"
-            rows={2}
-          />
-        </div>
-      </div>
+  const removeWorkshopFile = (idx: number) => {
+    setForm((prev) => {
+      const url = prev.workshopFilePreviews[idx];
+      if (url?.startsWith("blob:")) URL.revokeObjectURL(url);
+      return {
+        ...prev,
+        workshopFiles: prev.workshopFiles.filter((_, i) => i !== idx),
+        workshopFilePreviews: prev.workshopFilePreviews.filter((_, i) => i !== idx),
+      };
+    });
+  };
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <label className="text-xs font-body font-medium">Our Mission Icon</label>
-          <div className="flex items-center gap-3">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => handleImageUpload(e.target.files?.[0] ?? null, isNew, "mission")}
-              className="block w-full text-sm flex-1 bg-background border border-border rounded-lg px-3 py-2"
-            />
-            {data.mission_icon && (
-              <img src={data.mission_icon} alt="Preview" className="h-10 w-10 rounded border border-border object-cover" />
-            )}
-          </div>
-        </div>
-      </div>
-      <div className="space-y-2">
-        <label className="text-xs font-body font-medium">Workshop Gallery</label>
-        <div className="flex flex-wrap gap-2 mb-2">
-          {data.workshop_images.map((img, idx) => (
-            <div key={idx} className="relative h-12 w-12 rounded border border-border overflow-hidden">
-              <img src={img} className="h-full w-full object-cover" />
-              <button
-                onClick={() => removeWorkshopImage(idx, isNew)}
-                className="absolute top-0 right-0 bg-red-500 text-white p-0.5"
-              >
-                <X className="h-2 w-2" />
-              </button>
-            </div>
-          ))}
-        </div>
-        <input
-          type="file"
-          multiple
-          accept="image/*"
-          onChange={(e) => {
-            const files = Array.from(e.target.files || []);
-            files.forEach(f => handleImageUpload(f, isNew, "workshop"));
-          }}
+  const handleUpsert = async () => {
+    setSaving(true);
+    try {
+      const mergedWorkshopImages = [...form.workshopUrls, ...form.workshopFiles];
+      const payload = {
+        story_title: form.story_title.trim() || null,
+        title: form.title.trim() || null,
+        content: form.content.trim() || null,
+        story: form.story.trim() || null,
+        mission: form.mission.trim() || null,
+        vision: form.vision.trim() || null,
+        workshop_image: mergedWorkshopImages,
+      };
 
-          className="block w-full text-sm bg-background border border-border rounded-lg px-3 py-2"
-        />
-      </div>
-    </div>
-  );
+      const res = await upsertAdminAbout(payload, { suppress401Redirect: true });
+      setItem(res);
+      toast.success(res?.id ? "About updated" : "About saved");
+      setIsFormOpen(false);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to save about";
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="w-full">
@@ -297,106 +148,302 @@ const AboutAdmin = () => {
         <div className="p-4 space-y-4">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h3 className="text-sm font-display font-semibold">About Sections</h3>
-              <p className="text-xs text-muted-foreground font-body">Manage page content records.</p>
+              <h3 className="text-sm font-display font-semibold">About</h3>
+              <p className="text-xs text-muted-foreground font-body">API content from `/admin/about`.</p>
             </div>
-            <div className="flex items-center gap-2">
-              <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                <DialogTrigger asChild>
-                  <button className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-body hover:bg-muted/50 transition-colors">
-                    <Plus className="h-4 w-4" />
-                    Add Section
+            <button
+              type="button"
+              onClick={openUpsertModal}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-body hover:bg-muted/50 transition-colors"
+            >
+              {item ? "Update About" : "Create About"}
                   </button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader><DialogTitle>Create About Section</DialogTitle></DialogHeader>
-                  <FormFields data={newItem} setData={setNewItem} isNew={true} />
-                  <DialogFooter>
-                    <button onClick={() => setIsAddOpen(false)} className="px-4 py-2 rounded-lg border border-border text-sm font-body">Cancel</button>
-                    <button onClick={handleAddSubmit} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-body">Save</button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
           </div>
 
           <div className="border border-border rounded-lg overflow-hidden">
             <Table className="table-fixed min-w-[800px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[20%]">Pre-Title</TableHead>
                   <TableHead className="w-[20%]">Title</TableHead>
-                  <TableHead className="w-[45%]">Story Snippet</TableHead>
+                  <TableHead className="w-[20%]">Story Title</TableHead>
+                  <TableHead className="w-[45%]">Content</TableHead>
                   <TableHead className="w-[15%]">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((it, idx) => (
-                  <TableRow key={idx}>
-                    <TableCell className="p-2 truncate font-body text-sm px-4">{it.title}</TableCell>
-                    <TableCell className="p-2 truncate font-body text-sm px-4">{it.content}</TableCell>
-                    <TableCell className="p-2 truncate font-body text-sm px-4">{it.story}</TableCell>
-                    <TableCell className="p-2 px-4">
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => openView(idx)} className="p-1.5 hover:bg-muted rounded transition-colors"><Eye className="h-4 w-4 text-muted-foreground" /></button>
-                        <button onClick={() => openEdit(idx)} className="p-1.5 hover:bg-muted rounded transition-colors"><Edit className="h-4 w-4 text-muted-foreground" /></button>
-                        <button onClick={() => removeItem(idx)} className="p-1.5 hover:bg-red-500/10 rounded transition-colors"><Trash2 className="h-4 w-4 text-red-500" /></button>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="p-0">
+                      <div className="flex min-h-[180px] items-center justify-center py-8">
+                        <Loading size={24} className="text-primary" message="Loading about..." />
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : !item ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="p-0">
+                      <Empty title="No about data found" description="No record was returned from /admin/about." />
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  <TableRow key={String(item.id)}>
+                    <TableCell className="p-2 align-middle">
+                      <span className="px-2 py-1.5 text-sm font-body truncate block w-full">{item.title || "—"}</span>
+                    </TableCell>
+                    <TableCell className="p-2 align-middle">
+                      <span className="px-2 py-1.5 text-sm font-body truncate block w-full">{item.story_title || "—"}</span>
+                    </TableCell>
+                    <TableCell className="p-2 align-middle">
+                      <span className="px-2 py-1.5 text-sm font-body truncate block w-full">{item.content || "—"}</span>
+                    </TableCell>
+                    <TableCell className="p-2 align-middle">
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setIsViewOpen(true)}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted/50 transition-colors"
+                          title="View"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={openUpsertModal}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted/50 transition-colors"
+                          title="Edit"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
         </div>
       </div>
 
-      {/* Edit Dialog */}
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle>Edit About Section</DialogTitle></DialogHeader>
-          {editingItem && <FormFields data={editingItem} setData={setEditingItem} isNew={false} />}
-          <DialogFooter>
-            <button onClick={() => setIsEditOpen(false)} className="px-4 py-2 rounded-lg border border-border text-sm font-body">Cancel</button>
-            <button onClick={handleEditSubmit} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-body">Save Changes</button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* View Dialog */}
       <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle>View About Section</DialogTitle></DialogHeader>
-          {viewingItem && (
-            <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto">
-              <div><p className="text-xs text-muted-foreground">Banner Pre-Title</p><p className="text-sm font-medium">{viewingItem.title}</p></div>
-              <div><p className="text-xs text-muted-foreground">Banner Title</p><p className="text-sm font-medium">{viewingItem.content}</p></div>
-              <div><p className="text-xs text-muted-foreground">Story</p><p className="text-sm border p-2 rounded bg-muted/30">{viewingItem.story}</p></div>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>View About</DialogTitle>
+          </DialogHeader>
+          {item && (
+            <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
-                <div><p className="text-xs text-muted-foreground">Mission</p><p className="text-sm">{viewingItem.mission}</p></div>
-                <div><p className="text-xs text-muted-foreground">Vision</p><p className="text-sm">{viewingItem.vision}</p></div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground mb-1">Our Mission Icon</p>
-                {viewingItem.mission_icon ? (
-                  <img src={viewingItem.mission_icon} className="h-24 w-24 object-contain rounded border" />
-                ) : (
-                  <div className="h-24 w-24 bg-muted rounded border flex items-center justify-center text-xs text-muted-foreground italic">None</div>
-                )}
-              </div>
-
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Workshop Gallery ({viewingItem.workshop_images.length})</p>
-                <div className="flex flex-wrap gap-2">
-                  {viewingItem.workshop_images.map((img, i) => (
-                    <img key={i} src={img} className="h-16 w-16 object-cover rounded border" />
-                  ))}
+                <div>
+                  <p className="text-xs text-muted-foreground">Title</p>
+                  <p className="text-sm">{item.title || "—"}</p>
                 </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Story Title</p>
+                  <p className="text-sm">{item.story_title || "—"}</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Content</p>
+                <p className="text-sm">{item.content || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Story</p>
+                <p className="text-sm whitespace-pre-line">{item.story || "—"}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Mission</p>
+                  <p className="text-sm whitespace-pre-line">{item.mission || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Vision</p>
+                  <p className="text-sm whitespace-pre-line">{item.vision || "—"}</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Workshop Images ({item.workshop_image?.length ?? 0})
+                </p>
+                {item.workshop_image && item.workshop_image.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {item.workshop_image.map((src, idx) => (
+                      <PreviewImage key={`${src}-${idx}`} src={src} alt={`Workshop ${idx + 1}`} />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No workshop images</p>
+                )}
               </div>
             </div>
           )}
           <DialogFooter>
-            <button onClick={() => setIsViewOpen(false)} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-body">Close</button>
+            <button
+              onClick={() => setIsViewOpen(false)}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-body hover:bg-primary/90 transition-colors"
+            >
+              Close
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isFormOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            form.workshopFilePreviews.forEach((url) => {
+              if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+            });
+          }
+          setIsFormOpen(open);
+        }}
+      >
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{item ? "Update About" : "Create About"}</DialogTitle>
+          </DialogHeader>
+          <Tabs defaultValue="tab-1" className="py-2">
+            <TabsList className="grid w-full grid-cols-3 bg-muted/60">
+              <TabsTrigger value="tab-1">Basic Content</TabsTrigger>
+              <TabsTrigger value="tab-2">Story & Values</TabsTrigger>
+              <TabsTrigger value="tab-3">Workshop Images</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="tab-1" className="mt-4">
+              <div className="rounded-xl border border-border bg-background/60 p-4 grid gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-body font-medium">Title</label>
+                    <input
+                      value={form.title}
+                      onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
+                      className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                      placeholder="About Us"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-body font-medium">Story Title</label>
+                    <input
+                      value={form.story_title}
+                      onChange={(e) => setForm((prev) => ({ ...prev, story_title: e.target.value }))}
+                      className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                      placeholder="Company Story"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-body font-medium">Content</label>
+                  <textarea
+                    value={form.content}
+                    onChange={(e) => setForm((prev) => ({ ...prev, content: e.target.value }))}
+                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none resize-none"
+                    rows={3}
+                    placeholder="Born in Stockholm. Designed for the World."
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="tab-2" className="mt-4">
+              <div className="rounded-xl border border-border bg-background/60 p-4 grid gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-body font-medium">Story</label>
+                  <textarea
+                    value={form.story}
+                    onChange={(e) => setForm((prev) => ({ ...prev, story: e.target.value }))}
+                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none resize-none"
+                    rows={5}
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-body font-medium">Mission</label>
+                    <textarea
+                      value={form.mission}
+                      onChange={(e) => setForm((prev) => ({ ...prev, mission: e.target.value }))}
+                      className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none resize-none"
+                      rows={4}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-body font-medium">Vision</label>
+                    <textarea
+                      value={form.vision}
+                      onChange={(e) => setForm((prev) => ({ ...prev, vision: e.target.value }))}
+                      className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-body focus:ring-2 focus:ring-primary/20 focus:outline-none resize-none"
+                      rows={4}
+                    />
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="tab-3" className="mt-4">
+              <div className="rounded-xl border border-border bg-background/60 p-4 space-y-4">
+                <div>
+                  <label className="text-xs font-body font-medium">Workshop Images</label>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Upload workshop images one by one. Uploaded files will be used by backend as workshop images.
+                  </p>
+                </div>
+                {form.workshopUrls.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {form.workshopUrls.map((src, idx) => (
+                      <div key={`${src}-${idx}`} className="space-y-1">
+                        <PreviewImage src={src} alt={`Workshop URL ${idx + 1}`} />
+                        <button
+                          type="button"
+                          onClick={() => removeWorkshopUrl(idx)}
+                          className="w-full rounded border border-border px-2 py-1 text-xs hover:bg-muted/50"
+                        >
+                          Remove URL
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+                {form.workshopFilePreviews.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {form.workshopFilePreviews.map((src, idx) => (
+                      <div key={`${src}-${idx}`} className="space-y-1">
+                        <PreviewImage src={src} alt={`Workshop file ${idx + 1}`} />
+                        <button
+                          type="button"
+                          onClick={() => removeWorkshopFile(idx)}
+                          className="w-full rounded border border-border px-2 py-1 text-xs hover:bg-muted/50"
+                        >
+                          Remove File
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+                <UploadImage
+                  label="Add Workshop Image"
+                  previewUrl={null}
+                  onFileSelect={onPickWorkshopFile}
+                  disabled={saving}
+                  className="mt-1"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Repeat upload to add more images.
+                </p>
+              </div>
+            </TabsContent>
+          </Tabs>
+          <DialogFooter>
+            <button
+              onClick={() => setIsFormOpen(false)}
+              className="px-4 py-2 rounded-lg border border-border text-sm font-body hover:bg-muted/50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleUpsert}
+              disabled={saving}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-body hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {saving ? "Saving..." : item ? "Update" : "Create"}
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

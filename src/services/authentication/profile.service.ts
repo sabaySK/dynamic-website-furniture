@@ -1,11 +1,12 @@
 import { authRoutes } from "@/services/api-route";
+import { apiClient } from "@/services/api-client";
+import type { RequestConfig } from "@/services/api-type";
 
 export interface ProfileUser {
   id: number;
   name: string;
   email: string;
   phone?: string | null;
-  address?: string | null;
   email_verified_at?: string | null;
   role?: string;
   status?: string;
@@ -19,98 +20,89 @@ export interface ProfilePayload {
   user?: ProfileUser | null;
 }
 
-export async function fetchProfile(): Promise<ProfilePayload> {
-  // DEMO MODE: Simulate profile fetch success
-  console.log("DEMO MODE: Simulating profile fetch");
-  
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // Get the current user from localStorage if it was set during login
-      const storedUser = localStorage.getItem("current_user");
-      let user: ProfileUser | null = null;
-      
-      if (storedUser) {
-        try {
-          const parsed = JSON.parse(storedUser);
-          user = {
-            id: parsed.id ?? 1,
-            name: parsed.name ?? "Demo User",
-            email: parsed.email ?? "demo@example.com",
-            phone: parsed.phone ?? "0968255000",
-            address: "123 Scandinavian St, NØRD City",
-            role: "user",
-            status: "active",
-            created_at: new Date().toISOString()
-          };
-        } catch (e) {
-          console.error("Demo Mode: Error parsing stored user", e);
-        }
-      } else {
-        // Fallback for demo
-        user = {
-          id: 1,
-          name: "Demo User",
-          email: "demo@example.com",
-          phone: "0968255000",
-          address: "123 Scandinavian St, NØRD City",
-          role: "user",
-          status: "active",
-          created_at: new Date().toISOString()
-        };
-      }
+/** Walk nested `{ data: ... }` layers and pick `user` or a plain user-shaped object. */
+function extractUserFromProfileResponse(res: unknown): { message: string; user: ProfileUser | null } {
+  let cur: unknown = res;
+  for (let depth = 0; depth < 8 && cur && typeof cur === "object"; depth++) {
+    const o = cur as Record<string, unknown>;
 
-      console.log("DEMO MODE: Profile success", user);
-      resolve({
-        message: "Profile fetched successfully (Demo Mode)",
-        user
-      });
-    }, 500);
-  });
+    const msg = o.message;
+    const message = typeof msg === "string" ? msg : "";
 
-  /* Original implementation commented out for Demo
-  try {
-    const res = await fetch(authRoutes.profile, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
-      credentials: "include",
-    });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      console.error("Profile error response:", res.status, text);
-      throw new Error(`Failed to fetch profile (${res.status})`);
+    const u = o.user;
+    if (u && typeof u === "object" && u !== null && !Array.isArray(u)) {
+      return { message, user: u as ProfileUser };
     }
 
-    const data = await res.json().catch(() => ({}));
+    const direct = looksLikeUserRecord(o);
+    if (direct) {
+      return { message, user: o as unknown as ProfileUser };
+    }
 
-    const rawUser = data?.user ?? null;
-
-    const user: ProfileUser | null = rawUser
-      ? {
-          id: Number(rawUser.id),
-          name: rawUser.name ?? "",
-          email: rawUser.email ?? "",
-          phone: rawUser.phone ?? null,
-          address: rawUser.address ?? null,
-          email_verified_at: rawUser.email_verified_at ?? null,
-          role: rawUser.role ?? undefined,
-          status: rawUser.status ?? undefined,
-          image: rawUser.image ?? null,
-          created_at: rawUser.created_at ?? undefined,
-          updated_at: rawUser.updated_at ?? undefined,
-        }
-      : null;
-
-    return {
-      message: data?.message ?? "",
-      user,
-    };
-  } catch (err) {
-    console.error("Fetch profile failed", err);
-    throw err;
+    if ("data" in o && o.data != null) {
+      cur = o.data;
+      continue;
+    }
+    break;
   }
-  */
+  return { message: "", user: null };
 }
+
+function looksLikeUserRecord(o: Record<string, unknown>): boolean {
+  if ("user" in o && o.user) return false;
+  const idOk = typeof o.id === "number" || typeof o.id === "string";
+  const hasContact =
+    typeof o.email === "string" ||
+    typeof o.phone === "string" ||
+    typeof o.name === "string";
+  const namedEmail =
+    typeof o.name === "string" && (typeof o.email === "string" || typeof o.phone === "string");
+  return (idOk && hasContact) || namedEmail;
+}
+
+export async function fetchProfile(config?: RequestConfig): Promise<ProfilePayload> {
+  const res = await apiClient.get<any>(authRoutes.profile, config);
+  const { message, user } = extractUserFromProfileResponse(res);
+  return { message, user };
+}
+
+/** JSON body for profile update — only these four fields. */
+export type ProfileUpdatePayload = Pick<ProfileUser, "name" | "email" | "phone" | "image">;
+
+/** When `imageFile` is set, only multipart fields are sent (no JSON `image` URL). */
+export type ProfileUpdateRequest = Omit<ProfileUpdatePayload, "image"> & {
+  image?: string | null;
+  imageFile?: File | null;
+};
+
+/**
+ * Update profile on the server (PUT /websites/profile).
+ * Sends only: name, email, phone, image (URL string in JSON, or file in multipart).
+ */
+export async function updateProfile(payload: ProfileUpdateRequest, config?: RequestConfig): Promise<ProfilePayload> {
+  if (payload.imageFile instanceof File) {
+    const fd = new FormData();
+    fd.append("name", payload.name);
+    fd.append("email", payload.email);
+    fd.append("phone", payload.phone ?? "");
+    fd.append("image", payload.imageFile);
+    const res = await apiClient.post<any>(authRoutes.updateProfile, fd, { ...(config ?? {}) });
+    const { message, user } = extractUserFromProfileResponse(res);
+    return { message, user };
+  }
+
+  const body: ProfileUpdatePayload = {
+    name: payload.name,
+    email: payload.email,
+    phone: payload.phone ?? null,
+    image: payload.image ?? null,
+  };
+  const res = await apiClient.put<any>(authRoutes.updateProfile, body, { ...(config ?? {}) });
+  const { message, user } = extractUserFromProfileResponse(res);
+  return { message, user };
+}
+
+export default {
+  fetchProfile,
+  updateProfile,
+};
